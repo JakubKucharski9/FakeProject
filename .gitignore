@@ -7,6 +7,8 @@ test_output/
 test_output
 .venv/
 .venv
+venv/
+venv
 .idea/
 .idea
 logs/
