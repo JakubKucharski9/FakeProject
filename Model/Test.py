@@ -22,30 +22,20 @@ def predict_photo(model, image_path, device, transform, threshold=.1):
 
 
 if __name__ == "__main__":
-    image_path = "../but6.jpg"
+    image_path = "../but5.jpg"
 
     transform = photo_transforms["test"]
-
-    # Initialize weights for most recent
     weights = EfficientNet_V2_M_Weights.DEFAULT
-
-    # Define the model
     model = efficientnet_v2_m(weights=weights)
-
-    # Replace number of classes with the actual number of classes
     model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, 1)
 
-    model_path = "model_8667.pth"
-    model.load_state_dict(torch.load(model_path, weights_only=True))
+    model_path = "model_9440_highthreshold.pth"
 
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-        print("Using GPU")
-    else:
-        device = torch.device("cpu")
-        print("Using CPU")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model.to(device)
+    model.load_state_dict(torch.load(model_path, weights_only=True, map_location=device))
 
     prediction, probability = predict_photo(model, image_path, device, transform, threshold=.19)
 

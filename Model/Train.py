@@ -5,22 +5,19 @@ from sklearn.metrics import accuracy_score, roc_curve, classification_report
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torchvision.transforms import v2 as transforms, InterpolationMode
-from tqdm import tqdm  #Show progress bar
+from tqdm import tqdm
 from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
 from sklearn.metrics import f1_score, precision_score, recall_score
 
 
-
-#Transform Huggingface Dataset to Pytorch Dataset
 class ToPytorchDataset(Dataset):
-    #Initialize
     def __init__(self, dataset_from_huggingface, transform=None):
         self.dataset_from_huggingface = dataset_from_huggingface
         self.transform = transform
-    #Return length of dataset
+
     def __len__(self):
         return len(self.dataset_from_huggingface)
-    #Return item
+
     def __getitem__(self, idx):
         item = self.dataset_from_huggingface[idx]
 
@@ -37,7 +34,6 @@ class ToPytorchDataset(Dataset):
         return image, label
 
 
-
 photo_transforms = {
     "train": transforms.Compose([
         transforms.ToImage(),
@@ -46,14 +42,13 @@ photo_transforms = {
 
         #transforms.CenterCrop(600),
 
-        transforms.RandomResizedCrop(600, scale=(0.8, 1.0)),
-
+        transforms.RandomResizedCrop(480, scale=(0.8, 1.0)),
 
         transforms.RandomHorizontalFlip(p=0.5),
 
         transforms.RandomRotation(degrees=15),
 
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+        #transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
 
         transforms.RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3)),
 
@@ -67,9 +62,9 @@ photo_transforms = {
     "test": transforms.Compose([
         transforms.ToImage(),
 
-        transforms.Resize(800, interpolation=InterpolationMode.BICUBIC),
+        transforms.Resize(600, interpolation=InterpolationMode.BICUBIC),
 
-        transforms.CenterCrop(600),
+        transforms.CenterCrop(480),
 
         transforms.ToDtype(torch.float32, scale=True),
 
@@ -77,16 +72,14 @@ photo_transforms = {
     ])}
 
 
-
 def find_best_accuracy(best_accuracy_path):
     try:
         with open(best_accuracy_path, 'r') as file:
             best_accuracy = float(file.read())
     except FileNotFoundError:
-        best_accuracy = -float('inf')  # Negative infinity
+        best_accuracy = -float('inf')
 
     return best_accuracy
-
 
 
 def save_best_model(model, accuracy, best_model_path, best_accuracy_path):
@@ -102,29 +95,10 @@ def save_best_model(model, accuracy, best_model_path, best_accuracy_path):
         tqdm.write(f"Accuracy nie została poprawiona. Best accuracy: {best_accuracy:.4f}")
 
 
-
-def save_best_model_with_stagnation(model, best_accuracy, accuracy, best_model_path, best_accuracy_path, stagnation_counter, patience):
-
-    if accuracy > best_accuracy:
-        best_accuracy = accuracy
-        stagnation_counter = 0
-        torch.save(model.state_dict(), best_model_path)
-        with open(best_accuracy_path, 'w') as file:
-            file.write(str(accuracy))
-        tqdm.write(f"Accuracy have been improved. Best accuracy: {accuracy:.4f}")
-    else:
-        stagnation_counter += 1
-        #tqdm.write(f"No improvemet. Stagnation counter: {stagnation_counter}/{patience}")
-
-    return best_accuracy, stagnation_counter
-
-
-
 def calculate_optimal_threshold(labels, probabilities):
     fpr, tpr, thresholds = roc_curve(labels, probabilities)
     optimal_idx = np.argmax(tpr - fpr)
     return thresholds[optimal_idx]
-
 
 
 def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, criterion, scheduler, best_model_path, best_accuracy_path, device):
@@ -183,13 +157,11 @@ def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, cr
                         best_accuracy_path=best_accuracy_path)
 
 
-
 def test_model_with_fixed_threshold(model, model_path, test_dataloader, device, threshold):
     torch.cuda.empty_cache()
     model.load_state_dict(torch.load(model_path, weights_only=True))
     model.to(device)
     model.eval()
-
 
     all_predictions, all_labels, all_probabilities = [], [], []
 
@@ -222,43 +194,30 @@ def test_model_with_fixed_threshold(model, model_path, test_dataloader, device, 
 
 
 if __name__ == "__main__":
-    # Load dataset
-    dataset = load_dataset("Kucharek9/Airforce1_project")
 
-    # Load train dataset
-    dataset_train_loader_to_pytorch = ToPytorchDataset(dataset["train"], transform=photo_transforms["train"])
+    dataset = load_dataset("Kucharek9/AF1Project")
+    #dataset_unprocessed = load_dataset("Kucharek9/AirForce1_unprocessed")
+    #dataset_autoprocessed = load_dataset("Kucharek9/AirForce1_autoProcessed")
+    #dataset_manualprocessed = load_dataset("Kucharek9/AirForce1_manualProcessed")
 
-    # Load test dataset
-    dataset_test_loader_to_pytorch = ToPytorchDataset(dataset["test"], transform=photo_transforms["test"])
-
-    # Hyperparameters
     batch_size = 16
 
-    # Create dataloaders
+    dataset_train_loader_to_pytorch = ToPytorchDataset(dataset["train"], transform=photo_transforms["train"])
     train_dataloader = DataLoader(dataset_train_loader_to_pytorch, batch_size=batch_size, shuffle=True)
+
+    dataset_test_loader_to_pytorch = ToPytorchDataset(dataset["test"], transform=photo_transforms["test"])
     test_dataloader = DataLoader(dataset_test_loader_to_pytorch, batch_size=batch_size, shuffle=False)
 
-    # Initialize weights for most recent
     weights = EfficientNet_V2_M_Weights.DEFAULT
-
-    # Define the model
     model = efficientnet_v2_m(weights=weights)
 
-    # Replace number of classes with the actual number of classes
     model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, 1)
 
-    # Move the model to the GPU if available
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-        print("Using GPU")
-    else:
-        device = torch.device("cpu")
-        print("Using CPU")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Move the model to available device
-    model = model.to(device)
-
-    for param in model.features.parameters():
+    """
+    # Used for Finetuning
+    for param in lmodel.features.parameters():
         param.requires_grad = False
 
     for param in list(model.features.children())[-5].parameters():
@@ -266,47 +225,43 @@ if __name__ == "__main__":
 
     for param in model.classifier.parameters():
         param.requires_grad = True
+    
+    """
 
-    # Define learning rate
-    #learning_rate = 0.001
     model.classifier = torch.nn.Sequential(
         torch.nn.Dropout(p=0.3),
         torch.nn.Linear(model.classifier[1].in_features, 1)
     )
+    model = model.to(device)
+    """
+    for param in model.parameters():
+        param.requires_grad = True
+    """
+    learning_rate = 1e-4
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
-    # Define the optimizer
-    #optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
-    #optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=learning_rate)
-    optimizer = torch.optim.AdamW([
-        {"params": model.features.parameters(), "lr": 1e-4},  # Wolniejszy learning rate dla feature extraction
-        {"params": model.classifier.parameters(), "lr": 1e-4}  # Szybszy learning rate dla klasyfikatora
-    ])
-
-    # Define the learning rate scheduler
-    #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.7)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=5, factor=0.7)
 
-    # Define the loss function
     criterion = torch.nn.BCEWithLogitsLoss()
 
-    # Best model and accuracy path
     best_model_path = "best_model.pth"
     best_accuracy_path = "best_accuracy.txt"
 
-    # Number of epochs to train the model
-    num_epochs = 30
+    num_epochs = 20
+
     """
     # Fine-tuning
-    model_path = "model_epoch_25_8167_recall8833.pth"
+    model_path = "model_.pth"
     model.load_state_dict(torch.load(model_path, weights_only=True))
-
+    """
     # Train the model
-    
     training(model=model, num_epochs=num_epochs, train_dataloader=train_dataloader, test_dataloader=test_dataloader,
                 optimizer=optimizer, criterion=criterion, scheduler=scheduler, best_model_path=best_model_path,
                 best_accuracy_path=best_accuracy_path, device=device)
+
 
     """
     # Test the model
     model_path = "model_8667.pth"
     test_model_with_fixed_threshold(model=model, model_path=model_path, test_dataloader=test_dataloader, device=device, threshold=0.19)
+    """
