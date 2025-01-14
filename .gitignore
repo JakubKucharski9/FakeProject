@@ -9,8 +9,8 @@ test_output
 .venv
 .idea/
 .idea
-Models/
-Models
+logs/
+logs
 
 # Ignore files
 *~

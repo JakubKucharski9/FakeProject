@@ -1,13 +1,11 @@
 import numpy as np
 import torch
-from datasets import load_dataset
-from sklearn.metrics import accuracy_score, roc_curve, classification_report
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
-from torchvision.transforms import v2 as transforms, InterpolationMode
 from tqdm import tqdm
+from datasets import load_dataset
+from sklearn.metrics import accuracy_score, roc_curve, classification_report, f1_score, precision_score, recall_score
+from torch.utils.data import DataLoader, Dataset
+from torchvision.transforms import v2 as transforms, InterpolationMode
 from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
-from sklearn.metrics import f1_score, precision_score, recall_score
 
 
 class ToPytorchDataset(Dataset):
@@ -39,8 +37,6 @@ photo_transforms = {
         transforms.ToImage(),
 
         transforms.Resize(800, interpolation=InterpolationMode.BICUBIC),
-
-        #transforms.CenterCrop(600),
 
         transforms.RandomResizedCrop(480, scale=(0.8, 1.0)),
 
@@ -157,67 +153,31 @@ def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, cr
                         best_accuracy_path=best_accuracy_path)
 
 
-def test_model_with_fixed_threshold(model, model_path, test_dataloader, device, threshold):
-    torch.cuda.empty_cache()
-    model.load_state_dict(torch.load(model_path, weights_only=True))
-    model.to(device)
-    model.eval()
-
-    all_predictions, all_labels, all_probabilities = [], [], []
-
-    with torch.no_grad():
-        for inputs, labels in test_dataloader:
-            inputs, labels = inputs.to(device), labels.to(device).float()
-            outputs = model(inputs)
-            probabilities = torch.sigmoid(outputs).squeeze()
-
-            predictions = (probabilities >= threshold).float()
-
-            all_probabilities.extend(probabilities.cpu().numpy())
-            all_predictions.extend(predictions.cpu().numpy())
-            all_labels.extend(labels.cpu().numpy())
-
-    accuracy = accuracy_score(all_labels, all_predictions)
-    precision = precision_score(all_labels, all_predictions)
-    recall = recall_score(all_labels, all_predictions)
-    f1 = f1_score(all_labels, all_predictions)
-    report = classification_report(all_labels, all_predictions)
-
-    print(f"Threshold: {threshold}")
-    print(f"Accuracy: {accuracy:.4f}")
-    print(f"Precision: {precision:.4f}")
-    print(f"Recall: {recall:.4f}")
-    print(f"F1-Score: {f1:.4f}")
-    print("\nClassification Report:\n")
-    print(report)
-
-
-
 if __name__ == "__main__":
 
     dataset = load_dataset("Kucharek9/AF1Project")
-    #dataset_unprocessed = load_dataset("Kucharek9/AirForce1_unprocessed")
-    #dataset_autoprocessed = load_dataset("Kucharek9/AirForce1_autoProcessed")
-    #dataset_manualprocessed = load_dataset("Kucharek9/AirForce1_manualProcessed")
+    dataset_unprocessed = load_dataset("Kucharek9/AirForce1_unprocessed")
+    dataset_autoprocessed = load_dataset("Kucharek9/AirForce1_autoProcessed")
+    dataset_manualprocessed = load_dataset("Kucharek9/AirForce1_manualProcessed")
+
+    current_dataset = dataset_autoprocessed
 
     batch_size = 16
 
-    dataset_train_loader_to_pytorch = ToPytorchDataset(dataset["train"], transform=photo_transforms["train"])
+    dataset_train_loader_to_pytorch = ToPytorchDataset(current_dataset["train"], transform=photo_transforms["train"])
     train_dataloader = DataLoader(dataset_train_loader_to_pytorch, batch_size=batch_size, shuffle=True)
 
-    dataset_test_loader_to_pytorch = ToPytorchDataset(dataset["test"], transform=photo_transforms["test"])
+    dataset_test_loader_to_pytorch = ToPytorchDataset(dataset_unprocessed["test"], transform=photo_transforms["test"])
     test_dataloader = DataLoader(dataset_test_loader_to_pytorch, batch_size=batch_size, shuffle=False)
 
     weights = EfficientNet_V2_M_Weights.DEFAULT
     model = efficientnet_v2_m(weights=weights)
 
-    model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, 1)
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    """
+
     # Used for Finetuning
-    for param in lmodel.features.parameters():
+    for param in model.features.parameters():
         param.requires_grad = False
 
     for param in list(model.features.children())[-5].parameters():
@@ -225,18 +185,16 @@ if __name__ == "__main__":
 
     for param in model.classifier.parameters():
         param.requires_grad = True
-    
-    """
 
     model.classifier = torch.nn.Sequential(
-        torch.nn.Dropout(p=0.3),
+        torch.nn.Dropout(p=0.5),
         torch.nn.Linear(model.classifier[1].in_features, 1)
     )
     model = model.to(device)
-    """
+
     for param in model.parameters():
         param.requires_grad = True
-    """
+
     learning_rate = 1e-4
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
@@ -247,21 +205,14 @@ if __name__ == "__main__":
     best_model_path = "best_model.pth"
     best_accuracy_path = "best_accuracy.txt"
 
-    num_epochs = 20
+    num_epochs = 30
 
-    """
+
     # Fine-tuning
-    model_path = "model_.pth"
-    model.load_state_dict(torch.load(model_path, weights_only=True))
-    """
+    model_path = "model_9000_unprocessed.pth"
+    model.load_state_dict(torch.load(model_path, weights_only=True, map_location=device))
+
     # Train the model
     training(model=model, num_epochs=num_epochs, train_dataloader=train_dataloader, test_dataloader=test_dataloader,
                 optimizer=optimizer, criterion=criterion, scheduler=scheduler, best_model_path=best_model_path,
                 best_accuracy_path=best_accuracy_path, device=device)
-
-
-    """
-    # Test the model
-    model_path = "model_8667.pth"
-    test_model_with_fixed_threshold(model=model, model_path=model_path, test_dataloader=test_dataloader, device=device, threshold=0.19)
-    """
