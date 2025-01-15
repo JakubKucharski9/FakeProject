@@ -156,6 +156,7 @@ def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, cr
 
 
 if __name__ == "__main__":
+    load_dotenv()
     dataset_unprocessed = load_dataset(os.getenv("DATASET_UNPROCESSED"))
     dataset_autoprocessed = load_dataset(os.getenv("DATASET_AUTOPROCESSED"))
     dataset_manualprocessed = load_dataset(os.getenv("DATASET_MANUALPROCESSED"))

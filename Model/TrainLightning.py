@@ -59,9 +59,22 @@ class LightningModel(LightningModule):
 
     def validation_step(self, val_batch, batch_idx):
         x, y = val_batch
-        x_hat = model(x)
-        loss = self.loss_fn(x_hat.squeeze(), y.float())
-        self.log('val_loss', loss)
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat.squeeze(), y.float())
+        predictions = (torch.sigmoid(y_hat) > 0.5).float()
+        accuracy = (predictions == y).float().mean()
+        self.log('val_loss', loss, prog_bar=True)
+        self.log('val_accuracy', accuracy, prog_bar=True)
+        return loss
+
+    def test_step(self, test_batch, batch_idx):
+        x, y = test_batch
+        y_hat = self(x)
+        loss = self.loss_fn(y_hat.squeeze(), y.float())
+        predictions = (torch.sigmoid(y_hat) > 0.5).float()
+        accuracy = (predictions == y).float().mean()
+        self.log('test_loss', loss, prog_bar=True)
+        self.log('test_accuracy', accuracy, prog_bar=True)
         return loss
 
     def configure_optimizers(self):
@@ -69,16 +82,18 @@ class LightningModel(LightningModule):
 
 
 if __name__ == "__main__":
+    load_dotenv()
     dataset_unprocessed = load_dataset(os.getenv("DATASET_UNPROCESSED"))
     dataset_autoprocessed = load_dataset(os.getenv("DATASET_AUTOPROCESSED"))
     dataset_manualprocessed = load_dataset(os.getenv("DATASET_MANUALPROCESSED"))
 
-    current_dataset = dataset_autoprocessed
-
     batch_size = 16
 
-    dataset_train_loader_to_pytorch = ToPytorchDataset(current_dataset["train"], transform=photo_transforms["train"])
+    dataset_train_loader_to_pytorch = ToPytorchDataset(dataset_manualprocessed["train"], transform=photo_transforms["train"])
     train_dataloader = DataLoader(dataset_train_loader_to_pytorch, batch_size=batch_size, shuffle=True)
+
+    dataset_val_loader_to_pytorch = ToPytorchDataset(dataset_manualprocessed["test"], transform=photo_transforms["test"])
+    val_dataloader = DataLoader(dataset_val_loader_to_pytorch, batch_size=batch_size, shuffle=False)
 
     dataset_test_loader_to_pytorch = ToPytorchDataset(dataset_unprocessed["test"], transform=photo_transforms["test"])
     test_dataloader = DataLoader(dataset_test_loader_to_pytorch, batch_size=batch_size, shuffle=False)
@@ -95,4 +110,5 @@ if __name__ == "__main__":
         log_every_n_steps=5,
     )
 
-    trainer.fit(model, train_dataloader, test_dataloader)
+    trainer.fit(model, train_dataloader, val_dataloader)
+    trainer.test(model, test_dataloader)
