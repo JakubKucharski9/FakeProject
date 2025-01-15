@@ -1,134 +1,96 @@
 import torch
 import torch.nn as nn
+from PIL.Image import Image
+from pytorch_lightning import LightningModule, LightningDataModule, Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
-from torch.optim import AdamW
+from torch.utils.data import DataLoader, Dataset
 from datasets import load_dataset
-from torch.utils.data import DataLoader, random_split, TensorDataset
-import pytorch_lightning as pl
-from torchvision.transforms import v2 as transforms, InterpolationMode
-from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights, EfficientNet
+from torchvision.transforms import Compose, Resize, ToTensor, Normalize
+from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
+from Train import photo_transforms
 
 
-class DataModule(pl.LightningDataModule):
-    def __init__(self, dataset_name, batch_size=16):
-        super().__init__()
-        self.dataset_name = dataset_name
-        self.batch_size = batch_size
+class ToPytorchDataset(Dataset):
+    def __init__(self, dataset_from_huggingface, transform=None):
+        self.dataset_from_huggingface = dataset_from_huggingface
+        self.transform = transform
 
-        self.train_transform = transforms.Compose([
-        transforms.ToImage(),
+    def __len__(self):
+        return len(self.dataset_from_huggingface)
 
-        transforms.Resize(800, interpolation=InterpolationMode.BICUBIC),
+    def __getitem__(self, idx):
+        item = self.dataset_from_huggingface[idx]
 
-        transforms.RandomResizedCrop(480, scale=(0.8, 1.0)),
+        image = item["image"]
+        label = item["label"]
 
-        transforms.RandomHorizontalFlip(p=0.5),
+        # Convert image to RGB to delete alpha channel
+        if image.mode == "RGBA":
+            image = image.convert("RGB")
 
-        transforms.RandomRotation(degrees=15),
+        if self.transform:
+            image = self.transform(image)
 
-        #transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+        label_one_hot = torch.zeros(2)  # Assuming 2 classes
+        label_one_hot[label] = 1.0
 
-        transforms.RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3)),
+        return image, label_one_hot
 
-        transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 2.0)),
-
-        transforms.ToDtype(torch.float32, scale=True),
-
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ])
-
-        self.val_transform =transforms.Compose([
-            transforms.ToImage(),
-
-            transforms.Resize(600, interpolation=InterpolationMode.BICUBIC),
-
-            transforms.CenterCrop(480),
-
-            transforms.ToDtype(torch.float32, scale=True),
-
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
-
-    def prepare_data(self):
-        load_dataset(self.dataset_name)
-
-    def setup(self, stage=None):
-        dataset = load_dataset(self.dataset_name)
-        if stage == "fit" or stage is None:
-            self.train_data = dataset["train"].map(
-                self._apply_transforms(self.train_transform),
-                batched=False
-            )
-            self.val_data = dataset["test"].map(
-                self._apply_transforms(self.val_transform),
-                batched=False
-            )
-
-    def _apply_transforms(self, transform):
-        def transform_function(example):
-            example["image"] = transform(example["image"])
-            assert isinstance(example["image"], torch.Tensor), f"Image should be a tensor, got {type(example['image'])}"
-            return example
-
-        return transform_function
-
-    def train_dataloader(self):
-        return DataLoader(dataset=self.train_data, batch_size=self.batch_size, shuffle=True, num_workers=4, persistent_workers=True)
-
-    def val_dataloader(self):
-        return DataLoader(dataset=self.val_data, batch_size=self.batch_size, shuffle=False, num_workers=4, persistent_workers=True)
-
-class LightningModel(pl.LightningModule):
+class LightningModel(LightningModule):
     def __init__(self, num_classes=2, learning_rate=1e-4):
         super().__init__()
-        self.save_hyperparameters()
-
-        weights = EfficientNet_V2_M_Weights.DEFAULT
-        self.model = efficientnet_v2_m(weights=weights)
-
-        in_features = self.model.classifier[1].in_features
-        self.model.classifier[1] = nn.Linear(in_features, num_classes)
-
-        self.loss_fn = nn.BCELoss()
+        self.model = efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT)
+        self.model.classifier[1] = nn.Linear(self.model.classifier[1].in_features, num_classes)
+        self.loss_fn = nn.BCEWithLogitsLoss()
         self.learning_rate = learning_rate
 
     def forward(self, x):
         return self.model(x)
 
-    def training_step(self, batch, batch_idx):
-        x, y = batch["image"], batch["label"]
-        y_hat = self(x)
-        loss = self.loss_fn(y_hat, y)
+    def training_step(self, train_batch, batch_idx):
+        x, y = train_batch
+        x_hat = model(x)
+        loss = self.loss_fn(x_hat.squeeze(), y.float())
         self.log('train_loss', loss)
         return loss
 
-    def validation_step(self, batch, batch_idx):
-        x, y = batch["image"], batch["label"]
-        y_hat = self(x)
-        loss = self.loss_fn(y_hat, y)
-        acc = (y_hat.argmax(dim=1) == y).float().mean()
-        self.log('val_loss', loss, prog_bar=True)
-        self.log('val_acc', acc, prog_bar=True)
+    def validation_step(self, val_batch, batch_idx):
+        x, y = val_batch
+        x_hat = model(x)
+        loss = self.loss_fn(x_hat.squeeze(), y.float())
+        self.log('val_loss', loss)
+        return loss
 
     def configure_optimizers(self):
-        return AdamW(self.parameters(), lr=self.learning_rate)
+        return torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
+
 
 if __name__ == "__main__":
-    dataset_unprocessed = "Kucharek9/AirForce1_unprocessed"
-    dataset_autoprocessed = "Kucharek9/AirForce1_autoProcessed"
-    dataset_manualprocessed = "Kucharek9/AirForce1_manualProcessed"
+    dataset = load_dataset("Kucharek9/AF1Project")
+    dataset_unprocessed = load_dataset("Kucharek9/AirForce1_unprocessed")
+    dataset_autoprocessed = load_dataset("Kucharek9/AirForce1_autoProcessed")
+    dataset_manualprocessed = load_dataset("Kucharek9/AirForce1_manualProcessed")
 
-    data_module = DataModule(dataset_name=dataset_unprocessed, batch_size=16)
+    current_dataset = dataset_autoprocessed
+
+    batch_size = 16
+
+    dataset_train_loader_to_pytorch = ToPytorchDataset(current_dataset["train"], transform=photo_transforms["train"])
+    train_dataloader = DataLoader(dataset_train_loader_to_pytorch, batch_size=batch_size, shuffle=True)
+
+    dataset_test_loader_to_pytorch = ToPytorchDataset(dataset_unprocessed["test"], transform=photo_transforms["test"])
+    test_dataloader = DataLoader(dataset_test_loader_to_pytorch, batch_size=batch_size, shuffle=False)
+
+    #data_module = DataModule(dataset_name="Kucharek9/AirForce1_unprocessed", batch_size=16)
     model = LightningModel(num_classes=2, learning_rate=1e-4)
     logger = TensorBoardLogger("logs/")
 
-    trainer = pl.Trainer(
+    trainer = Trainer(
         max_epochs=20,
         accelerator='gpu',
         devices=1,
         logger=logger,
-        log_every_n_steps=5
+        log_every_n_steps=5,
     )
 
-    torch.set_float32_matmul_precision('medium')
-    trainer.fit(model, data_module)
+    trainer.fit(model, train_dataloader, test_dataloader)
