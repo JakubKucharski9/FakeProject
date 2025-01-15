@@ -1,27 +1,64 @@
 import os
 import torch
 import torch.nn as nn
-from PIL.Image import Image
-from pytorch_lightning import LightningModule, LightningDataModule, Trainer
+from pytorch_lightning import LightningModule, Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
+from scipy.stats import ttest_ind
 from torch.utils.data import DataLoader, Dataset
 from datasets import load_dataset
-from torchvision.transforms import Compose, Resize, ToTensor, Normalize
+from torchvision.transforms import v2 as transforms, InterpolationMode
 from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
-from Train import photo_transforms
 from dotenv import load_dotenv
+from torchmetrics.classification import Accuracy, Precision, Recall, F1Score
+
+
+photo_transforms = {
+    "train": transforms.Compose([
+        transforms.ToImage(),
+
+        transforms.Resize(800, interpolation=InterpolationMode.BICUBIC),
+
+        transforms.RandomResizedCrop(480, scale=(0.8, 1.0)),
+
+        transforms.RandomHorizontalFlip(p=0.5),
+
+        transforms.RandomRotation(degrees=15),
+
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+
+        transforms.RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3)),
+
+        transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 2.0)),
+
+        transforms.ToDtype(torch.float32, scale=True),
+
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+    ]),
+    "test": transforms.Compose([
+        transforms.ToImage(),
+
+        transforms.Resize(600, interpolation=InterpolationMode.BICUBIC),
+
+        transforms.CenterCrop(480),
+
+        transforms.ToDtype(torch.float32, scale=True),
+
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])}
 
 
 class ToPytorchDataset(Dataset):
-    def __init__(self, dataset_from_huggingface, transform=None):
-        self.dataset_from_huggingface = dataset_from_huggingface
+    def __init__(self, dataset, transform=None):
+        self.dataset = dataset
         self.transform = transform
 
     def __len__(self):
-        return len(self.dataset_from_huggingface)
+        return len(self.dataset)
 
     def __getitem__(self, idx):
-        item = self.dataset_from_huggingface[idx]
+        item = self.dataset[idx]
 
         image = item["image"]
         label = item["label"]
@@ -38,14 +75,31 @@ class ToPytorchDataset(Dataset):
 
         return image, label_one_hot
 
+    @classmethod
+    def dataloader_from_hf(cls, dataset, transform, batch_size, shuffle):
+        dataset_to_pytorch = cls(dataset, transform)
+        dataloader = DataLoader(dataset_to_pytorch, batch_size=batch_size, shuffle=shuffle)
+        return dataloader
+
 
 class LightningModel(LightningModule):
     def __init__(self, num_classes=2, learning_rate=1e-4):
         super().__init__()
         self.model = efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT)
-        self.model.classifier[1] = nn.Linear(self.model.classifier[1].in_features, num_classes)
+        self.model.classifier = nn.Sequential(
+            nn.Dropout(p=0.5),
+            nn.Linear(self.model.classifier[1].in_features, num_classes)
+        )
         self.loss_fn = nn.BCEWithLogitsLoss()
         self.learning_rate = learning_rate
+
+        self.accuracy = Accuracy(num_classes=num_classes, average='macro', task="binary")
+        self.precision = Precision(num_classes=num_classes, average='macro', task="binary")
+        self.recall = Recall(num_classes=num_classes, average='macro', task="binary")
+        self.f1 = F1Score(num_classes=num_classes, average='macro', task="binary")
+
+        self.predictions = []
+        self.targets = []
 
     def forward(self, x):
         return self.model(x)
@@ -61,11 +115,41 @@ class LightningModel(LightningModule):
         x, y = val_batch
         y_hat = self(x)
         loss = self.loss_fn(y_hat.squeeze(), y.float())
-        predictions = (torch.sigmoid(y_hat) > 0.5).float()
-        accuracy = (predictions == y).float().mean()
+        predictions = torch.argmax(y_hat, dim=1)
+        self.accuracy.update(predictions, y)
+        self.precision.update(predictions, y)
+        self.recall.update(predictions, y)
+        self.f1.update(predictions, y)
+
+        self.predictions.extend(predictions.cpu().numpy())
+        self.targets.extend(y.cpu().numpy())
+
         self.log('val_loss', loss, prog_bar=True)
-        self.log('val_accuracy', accuracy, prog_bar=True)
         return loss
+
+    def validation_epoch_end(self):
+        accuracy = self.accuracy.compute()
+        recall = self.recall.compute()
+        precision = self.precision.compute()
+        f1_score = self.f1_score.compute()
+
+        self.log('val_accuracy', accuracy, prog_bar=True)
+        self.log('val_precision', precision, prog_bar=True)
+        self.log('val_recall', recall, prog_bar=True)
+        self.log('val_f1', f1_score, prog_bar=True)
+
+        if len(self.targets) > 0 and len(self.predictions) > 0:
+            predictions = torch.tensor(self.predictions)
+            targets = torch.tensor(self.targets)
+            t_stat, p_value = ttest_ind(predictions.numpy(), targets.numpy(), equal_var=False)
+            self.log('val_p_value', p_value, prog_bar=True)
+
+        self.accuracy.reset()
+        self.precision.reset()
+        self.recall.reset()
+        self.f1.reset()
+        self.predictions = []
+        self.targets = []
 
     def test_step(self, test_batch, batch_idx):
         x, y = test_batch
@@ -80,6 +164,12 @@ class LightningModel(LightningModule):
     def configure_optimizers(self):
         return torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
 
+    def configure_lr_scheduler(self):
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, 'max', factor=0.7, patience=5)
+
+    def configure_grad_norm(self):
+        return torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+
 
 if __name__ == "__main__":
     load_dotenv()
@@ -89,20 +179,35 @@ if __name__ == "__main__":
 
     batch_size = 16
 
-    dataset_train_loader_to_pytorch = ToPytorchDataset(dataset_manualprocessed["train"], transform=photo_transforms["train"])
-    train_dataloader = DataLoader(dataset_train_loader_to_pytorch, batch_size=batch_size, shuffle=True)
+    train_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_manualprocessed["train"],
+                                                           transform=photo_transforms["train"],
+                                                           batch_size=batch_size,
+                                                           shuffle=True)
 
-    dataset_val_loader_to_pytorch = ToPytorchDataset(dataset_manualprocessed["test"], transform=photo_transforms["test"])
-    val_dataloader = DataLoader(dataset_val_loader_to_pytorch, batch_size=batch_size, shuffle=False)
+    val_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_manualprocessed["test"],
+                                                         transform=photo_transforms["test"],
+                                                         batch_size=batch_size,
+                                                         shuffle=False)
 
-    dataset_test_loader_to_pytorch = ToPytorchDataset(dataset_unprocessed["test"], transform=photo_transforms["test"])
-    test_dataloader = DataLoader(dataset_test_loader_to_pytorch, batch_size=batch_size, shuffle=False)
+    test_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_unprocessed["test"],
+                                                          transform=photo_transforms["test"],
+                                                          batch_size=batch_size,
+                                                          shuffle=False)
 
     model = LightningModel(num_classes=2, learning_rate=1e-4)
     logger = TensorBoardLogger("logs/")
     device = "gpu" if torch.cuda.is_available() else "cpu"
 
+    checkpoints = ModelCheckpoint(
+        monitor="val_accuracy",
+        mode="max",
+        save_top_k=3,
+        dirpath="checkpoints/",
+        filename="model_{epoch}_{val_accuracy:.4f}.pth",
+    )
+
     trainer = Trainer(
+        callbacks=[checkpoints],
         max_epochs=20,
         accelerator=device,
         devices=1,
