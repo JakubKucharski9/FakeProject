@@ -1,4 +1,13 @@
-from nike_pack import *
+import numpy as np
+import torch
+from tqdm import tqdm
+from datasets import load_dataset
+from sklearn.metrics import accuracy_score, roc_curve, classification_report, f1_score, precision_score, recall_score
+from torch.utils.data import DataLoader, Dataset
+from torchvision.transforms import v2 as transforms, InterpolationMode
+from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
+from dotenv import load_dotenv
+import os
 
 
 class ToPytorchDataset(Dataset):
@@ -37,7 +46,7 @@ photo_transforms = {
 
         transforms.RandomRotation(degrees=15),
 
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+        #transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
 
         transforms.RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3)),
 
@@ -74,7 +83,7 @@ def find_best_accuracy(best_accuracy_path):
 def save_best_model(model, accuracy, best_model_path, best_accuracy_path):
 
     best_accuracy = find_best_accuracy(best_accuracy_path)
-    best_model_path = f'{best_model_path}_{accuracy}.pth'
+
     if accuracy > best_accuracy:
         torch.save(model.state_dict(), best_model_path)
         with open(best_accuracy_path, 'w') as file:
@@ -90,28 +99,26 @@ def calculate_optimal_threshold(labels, probabilities):
     return thresholds[optimal_idx]
 
 
-def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, criterion, scheduler, best_model_path,
-             best_accuracy_path, device, model_name, writer):
+def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, criterion, scheduler, best_model_path, best_accuracy_path, device):
     torch.cuda.empty_cache()
 
-    for epoch in tqdm(range(num_epochs), leave=False, dynamic_ncols=True):
+    for epoch in tqdm(range(num_epochs)):
         model.train()
         running_loss = 0.0
 
-        for inputs, labels in tqdm(train_dataloader, leave=False, dynamic_ncols=True):
+        for inputs, labels in tqdm(train_dataloader):
             inputs, labels = inputs.to(device), labels.to(device).float()
             optimizer.zero_grad()
             logits = model(inputs)
             loss = criterion(logits.squeeze(), labels)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             running_loss += loss.item()
 
             torch.cuda.empty_cache()
 
-        avg_loss = running_loss / len(train_dataloader)
-        tqdm.write(f"Epoch {epoch + 1}, Loss: {avg_loss}")
-        writer.add_scalar(f'{model_name}/Train_Loss', avg_loss, epoch)
+        tqdm.write(f"Epoch {epoch + 1}, Loss: {running_loss / len(train_dataloader)}")
 
         model.eval()
 
@@ -125,10 +132,12 @@ def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, cr
                 all_probabilities.extend(probabilities.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
 
+        # Optimal threshold
         optimal_threshold = calculate_optimal_threshold(all_labels, all_probabilities)
         tqdm.write(f"Optimal threshold for epoch {epoch + 1}: {optimal_threshold:.4f}")
         all_predictions = (np.array(all_probabilities) >= optimal_threshold).astype(float)
 
+        # Metrics
         accuracy = accuracy_score(all_labels, all_predictions)
         f1 = f1_score(all_labels, all_predictions)
         precision = precision_score(all_labels, all_predictions)
@@ -136,85 +145,74 @@ def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, cr
         tqdm.write(
             f"Epoch {epoch + 1} - Accuracy: {accuracy:.4f}, F1-Score: {f1:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}")
 
-        writer.add_scalar(f'{model_name}/Validation_Accuracy', accuracy, epoch)
-        writer.add_scalar(f'{model_name}/Validation_F1', f1, epoch)
-        writer.add_scalar(f'{model_name}/Validation_Precision', precision, epoch)
-        writer.add_scalar(f'{model_name}/Validation_Recall', recall, epoch)
-
+        # Update the learning rate
         scheduler.step(accuracy)
 
         if (epoch + 1) % 5 == 0 and epoch != 0:
-            torch.save(model.state_dict(), f"outputs/model_{model_name}_manualprocessed_epoch{epoch + 1}_{int(accuracy*1000)}.pth")
+            torch.save(model.state_dict(), f"model_epoch_{epoch + 1}.pth")
 
         save_best_model(model=model, accuracy=accuracy, best_model_path=best_model_path,
                         best_accuracy_path=best_accuracy_path)
 
-    writer.close()
 
 if __name__ == "__main__":
+    dataset_unprocessed = load_dataset(os.getenv("DATASET_UNPROCESSED"))
+    dataset_autoprocessed = load_dataset(os.getenv("DATASET_AUTOPROCESSED"))
+    dataset_manualprocessed = load_dataset(os.getenv("DATASET_MANUALPROCESSED"))
 
-    dataset_unprocessed = load_dataset("Kucharek9/AirForce1_unprocessed")
-    dataset_autoprocessed = load_dataset("Kucharek9/AirForce1_autoProcessed")
-    dataset_manualprocessed = load_dataset("Kucharek9/AirForce1_manualProcessed")
+    current_dataset = dataset_autoprocessed
 
     batch_size = 16
 
-    dataset_train_loader_to_pytorch = ToPytorchDataset(dataset_manualprocessed["train"], transform=photo_transforms["train"])
+    dataset_train_loader_to_pytorch = ToPytorchDataset(current_dataset["train"], transform=photo_transforms["train"])
     train_dataloader = DataLoader(dataset_train_loader_to_pytorch, batch_size=batch_size, shuffle=True)
 
     dataset_test_loader_to_pytorch = ToPytorchDataset(dataset_unprocessed["test"], transform=photo_transforms["test"])
     test_dataloader = DataLoader(dataset_test_loader_to_pytorch, batch_size=batch_size, shuffle=False)
 
-    models = [
-        convnext_base(weights=ConvNeXt_Base_Weights.DEFAULT),
-        regnet_y_8gf(weights=RegNet_Y_8GF_Weights.DEFAULT),
-        efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT),
+    weights = EfficientNet_V2_M_Weights.DEFAULT
+    model = efficientnet_v2_m(weights=weights)
 
-    ]
-
-    writer = SummaryWriter(log_dir='logs/three_models_tests_100_epochs_manualprocessed')
-
-    model_names = ["ConvNeXt_Base", "RegNet_Y_8GF","EfficientNet_V2_M"]
-
-    for model_id, model in enumerate(models):
-        model_name = model_names[model_id]
-        if model_id==0:
-            model.classifier[2] = torch.nn.Linear(model.classifier[2].in_features, 1)
-            model.classifier = torch.nn.Sequential(
-                torch.nn.Flatten(start_dim=1),
-                torch.nn.LayerNorm(1024),
-                torch.nn.Dropout(p=0.3),
-                torch.nn.Linear(1024, 1)
-            )
-        elif model_id==1:
-            model.fc = torch.nn.Linear(model.fc.in_features, 1)
-            model.fc = torch.nn.Sequential(
-                torch.nn.Dropout(p=0.3),
-                torch.nn.Linear(model.fc.in_features, 1)
-            )
-        elif model_id==2:
-            model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, 1)
-            model.classifier = torch.nn.Sequential(
-                torch.nn.Dropout(p=0.3),
-                torch.nn.Linear(model.classifier[1].in_features, 1)
-            )
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = model.to(device)
+    # Used for Finetuning
+    for param in model.features.parameters():
+        param.requires_grad = False
 
-        learning_rate = 1e-4
-        optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+    for param in list(model.features.children())[-5].parameters():
+        param.requires_grad = True
 
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=5, factor=0.7)
+    for param in model.classifier.parameters():
+        param.requires_grad = True
 
-        criterion = torch.nn.BCEWithLogitsLoss()
+    model.classifier = torch.nn.Sequential(
+        torch.nn.Dropout(p=0.5),
+        torch.nn.Linear(model.classifier[1].in_features, 1)
+    )
+    model = model.to(device)
 
-        best_model_path = f"outputs/best_model_{model_name}"
-        best_accuracy_path = f"outputs/best_accuracy_{model_name}.txt"
+    for param in model.parameters():
+        param.requires_grad = True
 
-        num_epochs = 100
+    learning_rate = 1e-4
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
-        training(model=model, num_epochs=num_epochs, train_dataloader=train_dataloader, test_dataloader=test_dataloader,
-                    optimizer=optimizer, criterion=criterion, scheduler=scheduler, best_model_path=best_model_path,
-                    best_accuracy_path=best_accuracy_path, device=device, model_name=model_name, writer=writer)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=5, factor=0.7)
+
+    criterion = torch.nn.BCEWithLogitsLoss()
+
+    best_model_path = os.getenv("BEST_MODEL_PATH")
+    best_accuracy_path = os.getenv("BEST_ACCURACY_PATH")
+
+    num_epochs = 30
+
+
+    # Fine-tuning
+    model_path = "model_9000_unprocessed.pth"
+    model.load_state_dict(torch.load(model_path, weights_only=True, map_location=device))
+
+    # Train the model
+    training(model=model, num_epochs=num_epochs, train_dataloader=train_dataloader, test_dataloader=test_dataloader,
+                optimizer=optimizer, criterion=criterion, scheduler=scheduler, best_model_path=best_model_path,
+                best_accuracy_path=best_accuracy_path, device=device)
