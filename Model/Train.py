@@ -6,6 +6,8 @@ from sklearn.metrics import accuracy_score, roc_curve, classification_report, f1
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import v2 as transforms, InterpolationMode
 from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
+from dotenv import load_dotenv
+import os
 
 
 class ToPytorchDataset(Dataset):
@@ -154,11 +156,9 @@ def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, cr
 
 
 if __name__ == "__main__":
-
-    dataset = load_dataset("Kucharek9/AF1Project")
-    dataset_unprocessed = load_dataset("Kucharek9/AirForce1_unprocessed")
-    dataset_autoprocessed = load_dataset("Kucharek9/AirForce1_autoProcessed")
-    dataset_manualprocessed = load_dataset("Kucharek9/AirForce1_manualProcessed")
+    dataset_unprocessed = load_dataset(os.getenv("DATASET_UNPROCESSED"))
+    dataset_autoprocessed = load_dataset(os.getenv("DATASET_AUTOPROCESSED"))
+    dataset_manualprocessed = load_dataset(os.getenv("DATASET_MANUALPROCESSED"))
 
     current_dataset = dataset_autoprocessed
 
@@ -202,8 +202,8 @@ if __name__ == "__main__":
 
     criterion = torch.nn.BCEWithLogitsLoss()
 
-    best_model_path = "best_model.pth"
-    best_accuracy_path = "best_accuracy.txt"
+    best_model_path = os.getenv("BEST_MODEL_PATH")
+    best_accuracy_path = os.getenv("BEST_ACCURACY_PATH")
 
     num_epochs = 30
 

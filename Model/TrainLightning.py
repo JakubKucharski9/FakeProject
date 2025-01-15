@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 from PIL.Image import Image
@@ -8,6 +9,7 @@ from datasets import load_dataset
 from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
 from Train import photo_transforms
+from dotenv import load_dotenv
 
 
 class ToPytorchDataset(Dataset):
@@ -31,10 +33,11 @@ class ToPytorchDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        label_one_hot = torch.zeros(2)  # Assuming 2 classes
+        label_one_hot = torch.zeros(2)
         label_one_hot[label] = 1.0
 
         return image, label_one_hot
+
 
 class LightningModel(LightningModule):
     def __init__(self, num_classes=2, learning_rate=1e-4):
@@ -66,10 +69,9 @@ class LightningModel(LightningModule):
 
 
 if __name__ == "__main__":
-    dataset = load_dataset("Kucharek9/AF1Project")
-    dataset_unprocessed = load_dataset("Kucharek9/AirForce1_unprocessed")
-    dataset_autoprocessed = load_dataset("Kucharek9/AirForce1_autoProcessed")
-    dataset_manualprocessed = load_dataset("Kucharek9/AirForce1_manualProcessed")
+    dataset_unprocessed = load_dataset(os.getenv("DATASET_UNPROCESSED"))
+    dataset_autoprocessed = load_dataset(os.getenv("DATASET_AUTOPROCESSED"))
+    dataset_manualprocessed = load_dataset(os.getenv("DATASET_MANUALPROCESSED"))
 
     current_dataset = dataset_autoprocessed
 
@@ -81,13 +83,13 @@ if __name__ == "__main__":
     dataset_test_loader_to_pytorch = ToPytorchDataset(dataset_unprocessed["test"], transform=photo_transforms["test"])
     test_dataloader = DataLoader(dataset_test_loader_to_pytorch, batch_size=batch_size, shuffle=False)
 
-    #data_module = DataModule(dataset_name="Kucharek9/AirForce1_unprocessed", batch_size=16)
     model = LightningModel(num_classes=2, learning_rate=1e-4)
     logger = TensorBoardLogger("logs/")
+    device = "gpu" if torch.cuda.is_available() else "cpu"
 
     trainer = Trainer(
         max_epochs=20,
-        accelerator='gpu',
+        accelerator=device,
         devices=1,
         logger=logger,
         log_every_n_steps=5,
