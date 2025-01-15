@@ -162,13 +162,14 @@ class LightningModel(LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
-
-    def configure_lr_scheduler(self):
-        return torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, 'max', factor=0.7, patience=5)
-
-    def configure_grad_norm(self):
-        return torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm=1.0)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, 'max', factor=0.7, patience=5)
+        return (
+            {
+                'optimizer': optimizer,
+                'lr_scheduler': lr_scheduler
+            }
+        )
 
 
 if __name__ == "__main__":
