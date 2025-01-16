@@ -19,5 +19,6 @@ logs
 setup.bat
 
 *.pth
+*.ckpt
 best_accuracy.txt
 Scratch.py
