@@ -84,7 +84,7 @@ def find_best_accuracy(best_accuracy_path):
 def save_best_model(model, accuracy, best_model_path, best_accuracy_path):
 
     best_accuracy = find_best_accuracy(best_accuracy_path)
-
+    best_model_path = f'{best_model_path}_{accuracy}.pth'
     if accuracy > best_accuracy:
         torch.save(model.state_dict(), best_model_path)
         with open(best_accuracy_path, 'w') as file:
@@ -154,7 +154,7 @@ def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, cr
         scheduler.step(accuracy)
 
         if (epoch + 1) % 5 == 0 and epoch != 0:
-            torch.save(model.state_dict(), f"model_epoch_{model_name}_{epoch + 1}.pth")
+            torch.save(model.state_dict(), f"outputs/model_{model_name}_epoch{epoch + 1}_{int(accuracy*1000)}.pth")
 
         save_best_model(model=model, accuracy=accuracy, best_model_path=best_model_path,
                         best_accuracy_path=best_accuracy_path)
@@ -185,7 +185,7 @@ if __name__ == "__main__":
 
     ]
 
-    writer = SummaryWriter(log_dir='logs/three_models_tests')
+    writer = SummaryWriter(log_dir='logs/three_models_tests_100_epochs')
 
     model_names = ["ConvNeXt_Base", "RegNet_Y_8GF", "EfficientNet_V2_M"]
 
@@ -222,10 +222,10 @@ if __name__ == "__main__":
 
         criterion = torch.nn.BCEWithLogitsLoss()
 
-        best_model_path = f"best_model_{model_name}.pth"
-        best_accuracy_path = f"best_accuracy_{model_name}.txt"
+        best_model_path = f"outputs/best_model_{model_name}"
+        best_accuracy_path = f"outputs/best_accuracy_{model_name}.txt"
 
-        num_epochs = 20
+        num_epochs = 100
 
         training(model=model, num_epochs=num_epochs, train_dataloader=train_dataloader, test_dataloader=test_dataloader,
                     optimizer=optimizer, criterion=criterion, scheduler=scheduler, best_model_path=best_model_path,

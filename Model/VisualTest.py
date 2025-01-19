@@ -1,10 +1,11 @@
+import os
 from PIL import Image
 import torch
-from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
 from Model.Train import photo_transforms
 import matplotlib.pyplot as plt
 import cv2
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from Testing import EnsembleModel
 
 
 def grad_cam_analysis(model, image, target_layer, target_class):
@@ -108,51 +109,26 @@ def predict_photo(model, image_path, device, transform, threshold=.5):
 
 
 if __name__ == "__main__":
-    model = efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT)
-    model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, 1)
-
-    models = [
-        "model_9440_highthreshold.pth"
-    ]
-
-    Fakes = [
-        "../but1.jpg",
-        "../but5.jpg",
-    ]
-    Legit = [
-        "../but6.jpg",
-        "../but7.jpg",
-        "../but8.jpg",
-        "../but9.jpg",
-    ]
-
-    LegitCheck = [
-        "../lc/2.jpg",
-        "../lc/3.jpg",
-        "../lc/4.jpg",
-    ]
-
-    LegitCheck2 = [
-        "../lc2/1.jpg",
-        "../lc2/2.jpg",
-        "../lc2/3.jpg",
-        "../lc2/4.png",
-        "../lc2/5.jpg",
-    ]
-
-    images = Fakes+Legit
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    for image_path in images:
-        image = Image.open(image_path).convert("RGB")
-        transform = photo_transforms["test"]
-        image_tensor = transform(image).unsqueeze(0).to(device)
-        for model_path in models:
-            model.load_state_dict(torch.load(model_path, weights_only=True, map_location=device))
-            model.to(device)
-            target_layer = model.features[-1]
-            grad_cam_map = grad_cam_analysis(model, image_tensor, target_layer, target_class=0)
-            prediction, probability = predict_photo(model, image_path, device, transform, threshold=.5)
+    models = [
+        "../Model/ensemble_model.pth"
+    ]
+    test_dir = "C:\\Users\\kuba\\PycharmProjects\\NikeProject\\Test_photos\\lc3"
 
-            plot_results(image_tensor, grad_cam_map, model_path, image_path, prediction=prediction, probability=probability)
+    for root, dirs, files in os.walk(test_dir):
+        for image_file in files:
+            image_path = os.path.join(root, image_file)
+            image = Image.open(image_path).convert("RGB")
+            transform = photo_transforms["test"]
+            image_tensor = transform(image).unsqueeze(0).to(device)
+            for model_path in models:
+                model = torch.load(model_path, map_location=device, weights_only=False)
+                model.to(device)
+
+                target_layer = model.features[-1]
+
+                grad_cam_map = grad_cam_analysis(model, image_tensor, target_layer, target_class=0)
+                prediction, probability = predict_photo(model, image_path, device, transform, threshold=.5)
+
+                plot_results(image_tensor, grad_cam_map, model_path, image_path, prediction=prediction, probability=probability)
