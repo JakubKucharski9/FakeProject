@@ -1,6 +1,6 @@
-# Shoe Counterfeit Detection
+# Fake Project
 
-Fake Project is a machine learning project focused on identifying fake products authenticity. 
+Welcome to a machine learning project focused on identifying fake products authenticity. 
 The project utilizes a carefully curated dataset of authentic and counterfeit shoe images.
 
 The inspiration behind this project comes from the iconic **Nike Air Force 1**,
