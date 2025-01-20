@@ -1,4 +1,13 @@
-from __init__ import *
+import os
+from PIL import Image
+import torch
+from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
+
+from Train import photo_transforms
+import matplotlib.pyplot as plt
+import cv2
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from Testing import EnsembleModel
 
 
 def grad_cam_analysis(model, image, target_layer, target_class):
@@ -54,7 +63,7 @@ def plot_results(original_image, grad_cam_map, model_path, image_path, predictio
 
     ax1 = axes[0]
     ax1.imshow(image_np)
-    ax1.set_title(image_path.lstrip("../").rstrip(".jpg"))
+    ax1.set_title(image_path.lstrip("C:\\Users\\kuba\\PycharmProjects\\NikeProject\\Presentation").rstrip(".jpg"))
     ax1.axis("off")
 
     ax2 = axes[1]
@@ -77,7 +86,7 @@ def plot_results(original_image, grad_cam_map, model_path, image_path, predictio
     cax = divider.append_axes("right", size="5%", pad=0.1)
     plt.colorbar(im, cax=cax, label="Grad-CAM Heatmap")
 
-    fig.suptitle(model_path.rstrip(".pth").lstrip("model_"), fontsize=16)
+    fig.suptitle("Explainable AI Results", fontsize=16)
     plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.95))
     plt.show()
 
@@ -102,12 +111,14 @@ def predict_photo(model, image_path, device, transform, threshold=.5):
 
 
 if __name__ == "__main__":
+    model = efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT)
+    model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, 1)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     models = [
-        "../Model/ensemble_model.pth"
+        "C:\\Users\\kuba\\PycharmProjects\\NikeProject\\Models\\model_9440_highthreshold.pth"
     ]
-    test_dir = "C:\\Users\\kuba\\PycharmProjects\\NikeProject\\Test_photos\\lc3"
+    test_dir = "C:\\Users\\kuba\\PycharmProjects\\NikeProject\\Presentation"
 
     for root, dirs, files in os.walk(test_dir):
         for image_file in files:
@@ -116,7 +127,7 @@ if __name__ == "__main__":
             transform = photo_transforms["test"]
             image_tensor = transform(image).unsqueeze(0).to(device)
             for model_path in models:
-                model = torch.load(model_path, map_location=device, weights_only=False)
+                model.load_state_dict(torch.load(model_path, weights_only=True, map_location=device))
                 model.to(device)
 
                 target_layer = model.features[-1]
