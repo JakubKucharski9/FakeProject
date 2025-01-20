@@ -153,11 +153,9 @@ def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, cr
 
 if __name__ == "__main__":
 
-    #dataset = load_dataset("Kucharek9/AF1Project")
     dataset_unprocessed = load_dataset("Kucharek9/AirForce1_unprocessed")
     dataset_autoprocessed = load_dataset("Kucharek9/AirForce1_autoProcessed")
     dataset_manualprocessed = load_dataset("Kucharek9/AirForce1_manualProcessed")
-
 
     batch_size = 16
 
@@ -166,7 +164,6 @@ if __name__ == "__main__":
 
     dataset_test_loader_to_pytorch = ToPytorchDataset(dataset_unprocessed["test"], transform=photo_transforms["test"])
     test_dataloader = DataLoader(dataset_test_loader_to_pytorch, batch_size=batch_size, shuffle=False)
-
 
     models = [
         convnext_base(weights=ConvNeXt_Base_Weights.DEFAULT),
@@ -177,11 +174,19 @@ if __name__ == "__main__":
 
     writer = SummaryWriter(log_dir='Model/logs/three_models_tests_100_epochs')
 
-    model_names = ["EfficientNet_V2_M"]
+    model_names = ["ConvNeXt_Base", "RegNet_Y_8GF","EfficientNet_V2_M"]
 
     for model_id, model in enumerate(models):
         model_name = model_names[model_id]
-        if model_id==1:
+        if model_id==0:
+            model.classifier[2] = torch.nn.Linear(model.classifier[2].in_features, 1)
+            model.classifier = torch.nn.Sequential(
+                torch.nn.Flatten(start_dim=1),
+                torch.nn.LayerNorm(1024),
+                torch.nn.Dropout(p=0.3),
+                torch.nn.Linear(1024, 1)
+            )
+        elif model_id==1:
             model.fc = torch.nn.Linear(model.fc.in_features, 1)
             model.fc = torch.nn.Sequential(
                 torch.nn.Dropout(p=0.3),
@@ -193,14 +198,7 @@ if __name__ == "__main__":
                 torch.nn.Dropout(p=0.3),
                 torch.nn.Linear(model.classifier[1].in_features, 1)
             )
-        elif model_id==0:
-            model.classifier[2] = torch.nn.Linear(model.classifier[2].in_features, 1)
-            model.classifier = torch.nn.Sequential(
-                torch.nn.Flatten(start_dim=1),
-                torch.nn.LayerNorm(1024),
-                torch.nn.Dropout(p=0.3),
-                torch.nn.Linear(1024, 1)
-            )
+
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = model.to(device)
