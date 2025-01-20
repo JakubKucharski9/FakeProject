@@ -1,12 +1,4 @@
-from PIL import Image
-import torch
-import numpy as np
-import cv2
-from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
-from Model.Train import photo_transforms
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from captum.attr import LayerGradCam
+from __init__ import *
 
 def preprocess_image(image, target_size):
     """Przygotowuje obraz do analizy przez model."""

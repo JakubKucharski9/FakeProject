@@ -1,5 +1,4 @@
-import torch
-from torch.utils.data import DataLoader, Dataset
+from __init__ import *
 
 class ToPytorchDataset(Dataset):
     def __init__(self, dataset, transform=None):

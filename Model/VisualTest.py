@@ -1,11 +1,4 @@
-from PIL import Image
-import torch
-from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
-from Model.Train import photo_transforms
-import matplotlib.pyplot as plt
-import cv2
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-
+from __init__ import *
 
 def grad_cam_analysis(model, image, target_layer, target_class):
     model.eval()
@@ -116,14 +109,14 @@ if __name__ == "__main__":
     ]
 
     Fakes = [
-        "../but1.jpg",
-        "../but5.jpg",
+        "../lc3/but1.jpg",
+        "../lc3/but5.jpg",
     ]
     Legit = [
-        "../but6.jpg",
-        "../but7.jpg",
-        "../but8.jpg",
-        "../but9.jpg",
+        "../lc3/but6.jpg",
+        "../lc3/but7.jpg",
+        "../lc3/but8.jpg",
+        "../lc3/but9.jpg",
     ]
 
     LegitCheck = [
@@ -133,14 +126,14 @@ if __name__ == "__main__":
     ]
 
     LegitCheck2 = [
-        "../lc2/1.jpg",
-        "../lc2/2.jpg",
-        "../lc2/3.jpg",
-        "../lc2/4.png",
+        #"../lc2/1.jpg",
+        #"../lc2/2.jpg",
+        #"../lc2/3.jpg",
+        #"../lc2/4.png",
         "../lc2/5.jpg",
     ]
 
-    images = Fakes+Legit
+    images = Fakes
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

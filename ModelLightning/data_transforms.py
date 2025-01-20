@@ -1,5 +1,4 @@
-import torch
-from torchvision.transforms import v2 as transforms, InterpolationMode
+from __init__ import *
 
 
 def photo_transforms():
