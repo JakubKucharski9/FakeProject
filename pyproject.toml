@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "NikeProject"
+version = "0.1.0"
+description = "Projekt do rozpoznawania podróbek butów"
+authors = [
+    "Jakub Kucharski <kuba@kucharscy.net>"
+]
+readme = "README.md"
+packages = [{include = "Model"}, {include = "nike_pack"}]
+[tool.poetry.dependencies]
+python = ">=3.10.0"
+torch = "2.5.1"
+torchvision = "0.20.1"
+pytorch-lightning = "2.5.0.post0"
+datasets = "3.2.0"
+transformers = "4.48.0"
+huggingface-hub = "0.27.1"
+python-dotenv = "1.0.1"
+pillow = "11.1.0"
+tqdm = "4.67.1"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

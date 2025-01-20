@@ -1,4 +1,4 @@
-import os
+from nike_pack import *
 
 
 def count_files_in_directory(directory):

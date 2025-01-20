@@ -1,10 +1,4 @@
-from PIL import Image
-import torch
-from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
-from Model.Train import photo_transforms
-import matplotlib.pyplot as plt
-import cv2
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+from nike_pack import *
 
 
 def grad_cam_analysis(model, image, target_layer, target_class):
@@ -60,7 +54,7 @@ def plot_results(original_image, grad_cam_map, model_path, image_path, predictio
 
     ax1 = axes[0]
     ax1.imshow(image_np)
-    ax1.set_title(image_path.lstrip("../").rstrip(".jpg"))
+    ax1.set_title(image_path.lstrip("C:\\Users\\kuba\\PycharmProjects\\NikeProject\\Presentation").rstrip(".jpg"))
     ax1.axis("off")
 
     ax2 = axes[1]
@@ -83,7 +77,7 @@ def plot_results(original_image, grad_cam_map, model_path, image_path, predictio
     cax = divider.append_axes("right", size="5%", pad=0.1)
     plt.colorbar(im, cax=cax, label="Grad-CAM Heatmap")
 
-    fig.suptitle(model_path.rstrip(".pth").lstrip("model_"), fontsize=16)
+    fig.suptitle("Explainable AI Results", fontsize=16)
     plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.95))
     plt.show()
 
@@ -110,49 +104,26 @@ def predict_photo(model, image_path, device, transform, threshold=.5):
 if __name__ == "__main__":
     model = efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT)
     model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, 1)
-
-    models = [
-        "model_9440_highthreshold.pth"
-    ]
-
-    Fakes = [
-        "../but1.jpg",
-        "../but5.jpg",
-    ]
-    Legit = [
-        "../but6.jpg",
-        "../but7.jpg",
-        "../but8.jpg",
-        "../but9.jpg",
-    ]
-
-    LegitCheck = [
-        "../lc/2.jpg",
-        "../lc/3.jpg",
-        "../lc/4.jpg",
-    ]
-
-    LegitCheck2 = [
-        "../lc2/1.jpg",
-        "../lc2/2.jpg",
-        "../lc2/3.jpg",
-        "../lc2/4.png",
-        "../lc2/5.jpg",
-    ]
-
-    images = Fakes+Legit
-
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    for image_path in images:
-        image = Image.open(image_path).convert("RGB")
-        transform = photo_transforms["test"]
-        image_tensor = transform(image).unsqueeze(0).to(device)
-        for model_path in models:
-            model.load_state_dict(torch.load(model_path, weights_only=True, map_location=device))
-            model.to(device)
-            target_layer = model.features[-1]
-            grad_cam_map = grad_cam_analysis(model, image_tensor, target_layer, target_class=0)
-            prediction, probability = predict_photo(model, image_path, device, transform, threshold=.5)
+    models = [
+        "C:\\Users\\kuba\\PycharmProjects\\NikeProject\\Models\\model_9440_highthreshold.pth"
+    ]
+    test_dir = "C:\\Users\\kuba\\PycharmProjects\\NikeProject\\Presentation"
 
-            plot_results(image_tensor, grad_cam_map, model_path, image_path, prediction=prediction, probability=probability)
+    for root, dirs, files in os.walk(test_dir):
+        for image_file in files:
+            image_path = os.path.join(root, image_file)
+            image = Image.open(image_path).convert("RGB")
+            transform = photo_transforms["test"]
+            image_tensor = transform(image).unsqueeze(0).to(device)
+            for model_path in models:
+                model.load_state_dict(torch.load(model_path, weights_only=True, map_location=device))
+                model.to(device)
+
+                target_layer = model.features[-1]
+
+                grad_cam_map = grad_cam_analysis(model, image_tensor, target_layer, target_class=0)
+                prediction, probability = predict_photo(model, image_path, device, transform, threshold=.5)
+
+                plot_results(image_tensor, grad_cam_map, model_path, image_path, prediction=prediction, probability=probability)
