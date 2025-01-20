@@ -1,24 +1,17 @@
 # Ignore dirs
 ../Drive/
-Drive
-test_data/
-test_data
-test_output/
-test_output
-.venv/
-.venv
-venv/
-venv
-.idea/
-.idea
-logs/
-logs
+/test_data/
+/test_output/
+/.venv/
+/venv/
+/.idea/
+/logs/
+/Test_photos/
 
 # Ignore files
 *~
 setup.bat
-
 *.pth
 *.ckpt
 best_accuracy.txt
-Scratch.py
+Scratch*
