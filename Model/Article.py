@@ -1,10 +1,4 @@
-import torch
-import numpy as np
-import matplotlib.pyplot as plt
-from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
-from torchvision.transforms import transforms
-from captum.attr import IntegratedGradients
-from PIL import Image
+from __init__ import *
 
 
 def integrated_gradients_analysis(model, image, target_class):

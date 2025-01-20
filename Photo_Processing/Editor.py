@@ -1,7 +1,4 @@
-import os
-from rembg import remove
-from PIL import Image
-import io
+from __init__ import *
 
 
 def process_images_with_background(input_dir, output_dir):

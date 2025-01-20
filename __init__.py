@@ -1,6 +1,6 @@
 from PIL import Image
 import torch
-from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
+from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights, regnet_y_8gf, RegNet_Y_8GF_Weights, convnext_base, ConvNeXt_Base_Weights
 from Model.Train import photo_transforms
 import matplotlib.pyplot as plt
 import cv2
@@ -18,4 +18,6 @@ from pathlib import Path
 import hashlib
 import shutil
 import datetime
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from Testing import EnsembleModel
 load_dotenv()

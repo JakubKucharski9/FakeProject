@@ -1,8 +1,4 @@
-from PIL import Image
-import torch
-from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
-
-from Train import photo_transforms
+from __init__ import *
 
 def predict_photo(model, image_path, device, transform, threshold=.1):
 

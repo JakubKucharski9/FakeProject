@@ -1,8 +1,4 @@
-from pathlib import Path
-from PIL import Image
-import hashlib
-import shutil
-import datetime
+from __init__ import *
 
 paths_and_prefixes = [
     (Path("../Drive/data/af1"), "airforce1_"),
