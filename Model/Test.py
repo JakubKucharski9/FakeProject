@@ -1,4 +1,4 @@
-from __init__ import *
+from nike_pack import *
 
 def predict_photo(model, image_path, device, transform, threshold=.1):
 

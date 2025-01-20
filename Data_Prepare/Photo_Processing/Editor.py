@@ -1,4 +1,4 @@
-from __init__ import *
+from nike_pack import *
 
 
 def process_images_with_background(input_dir, output_dir):

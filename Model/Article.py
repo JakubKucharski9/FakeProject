@@ -1,4 +1,4 @@
-from __init__ import *
+from nike_pack import *
 
 
 def integrated_gradients_analysis(model, image, target_class):

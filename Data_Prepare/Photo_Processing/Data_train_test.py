@@ -1,4 +1,4 @@
-from __init__ import *
+from nike_pack import *
 
 # Ścieżki katalogów
 data_dir = "C:\\Users\\kuba\\Desktop\\test2\\procesed"

@@ -6,7 +6,7 @@ authors = [
     "Jakub Kucharski <kuba@kucharscy.net>"
 ]
 readme = "README.md"
-packages = [{include = "Model"}, {include = "ModelLightning"}, {include = "setup"}]
+packages = [{include = "Model"}, {include = "nike_pack"}]
 [tool.poetry.dependencies]
 python = ">=3.10.0"
 torch = "2.5.1"
