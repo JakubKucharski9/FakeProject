@@ -19,6 +19,7 @@ class ToPytorchDataset(Dataset):
             image = self.transform(image)
         return image, label
 
+
 photo_transforms = {
     "test": transforms.Compose([
         transforms.ToImage(),
@@ -29,10 +30,12 @@ photo_transforms = {
     ])
 }
 
+
 def calculate_optimal_threshold(labels, probabilities):
     fpr, tpr, thresholds = roc_curve(labels, probabilities)
     optimal_idx = np.argmax(tpr - fpr)
     return thresholds[optimal_idx]
+
 
 def ensemble_prediction(models, dataloader, device):
     all_probabilities = []
@@ -44,6 +47,7 @@ def ensemble_prediction(models, dataloader, device):
             all_probabilities.extend(avg_prediction)
     return np.array(all_probabilities)
 
+
 class EnsembleModel(torch.nn.Module):
     def __init__(self, models):
         super(EnsembleModel, self).__init__()
@@ -52,6 +56,7 @@ class EnsembleModel(torch.nn.Module):
     def forward(self, x):
         outputs = [torch.sigmoid(model(x)) for model in self.models]
         return torch.mean(torch.stack(outputs), dim=0)
+
 
 if __name__ == "__main__":
 
@@ -109,4 +114,5 @@ if __name__ == "__main__":
     precision = precision_score(test_labels, ensemble_predictions)
     recall = recall_score(test_labels, ensemble_predictions)
 
-    print(f"Ensemble Model - Accuracy: {accuracy:.4f}, F1-Score: {f1:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}")
+    print(
+        f"Ensemble Model - Accuracy: {accuracy:.4f}, F1-Score: {f1:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}")

@@ -5,7 +5,6 @@ from torchvision.models import (
     regnet_y_8gf, RegNet_Y_8GF_Weights,
     convnext_base, ConvNeXt_Base_Weights
 )
-from Model.Train import photo_transforms
 import matplotlib.pyplot as plt
 import cv2
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -33,7 +32,7 @@ from tensorboardX import SummaryWriter
 __all__ = [
     'Image', 'torch', 'efficientnet_v2_m', 'EfficientNet_V2_M_Weights',
     'regnet_y_8gf', 'RegNet_Y_8GF_Weights', 'convnext_base', 'ConvNeXt_Base_Weights',
-    'photo_transforms', 'plt', 'cv2', 'make_axes_locatable', 'np',
+    'plt', 'cv2', 'make_axes_locatable', 'np',
     'LayerGradCam', 'transforms', 'InterpolationMode', 'DataLoader', 'Dataset',
     'tqdm', 'load_dataset', 'accuracy_score', 'roc_curve', 'classification_report',
     'f1_score', 'precision_score', 'recall_score', 'load_dotenv', 'os', 'Path',
