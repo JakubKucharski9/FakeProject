@@ -1,4 +1,4 @@
-from nike_pack import *
+from __init__ import *
 
 
 Drive_data_dir = Path("../Drive/data")
