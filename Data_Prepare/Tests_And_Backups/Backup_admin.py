@@ -1,4 +1,4 @@
-from __init__ import *
+from nike_pack import *
 
 paths_and_prefixes = [
     (Path("../Drive/data/af1"), "airforce1_"),

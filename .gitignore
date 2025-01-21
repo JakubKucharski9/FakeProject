@@ -5,8 +5,9 @@
 /.venv/
 /venv/
 /.idea/
-/logs/
 /Test_photos/
+/Model/outputs/
+*__pycache__*
 
 # Ignore files
 *~
@@ -15,4 +16,3 @@ setup.bat
 *.ckpt
 best_accuracy.txt
 Scratch*
-*.yaml
