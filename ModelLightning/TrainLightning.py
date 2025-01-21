@@ -37,17 +37,8 @@ if __name__ == "__main__":
     learning_rate = 1e-4
     logger = TensorBoardLogger("logs/")
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    checkpoint_pth = None
-    model_pth = "../Models/model_9440.pth"
 
-    if checkpoint_pth is not None:
-        model = LightningModel.load_from_checkpoint(checkpoint_pth, num_classes=num_classes, learning_rate=learning_rate, freeze_bn=True)
-    elif model_pth is not None:
-        model = LightningModel(num_classes=num_classes, learning_rate=learning_rate)
-        state_dict = torch.load(model_pth, map_location=torch.device(device))
-        model.load_state_dict(state_dict, strict=False)
-    else:
-        model = LightningModel(num_classes=num_classes, learning_rate=learning_rate)
+    model = LightningModel(num_classes=num_classes, learning_rate=learning_rate)
 
     checkpoints = ModelCheckpoint(
         monitor="val_loss",
