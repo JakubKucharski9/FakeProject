@@ -1,4 +1,4 @@
-from __init__ import *
+from nike_pack import *
 
 
 def photo_transforms():

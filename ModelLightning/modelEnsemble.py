@@ -1,9 +1,4 @@
-import torch
-import torch.nn as nn
-from pytorch_lightning import LightningModule
-from scipy.stats import ttest_ind
-from torchvision.models import efficientnet_v2_m, EfficientNet_V2_M_Weights
-from torchmetrics.classification import Accuracy, Precision, Recall, F1Score
+from nike_pack import *
 
 class LightningModelEnsemble(LightningModule):
     def __init__(self, num_classes=2, learning_rate=1e-4, freeze_bn=False, model_list=None, mode=None):

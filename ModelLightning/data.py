@@ -1,4 +1,4 @@
-from __init__ import *
+from nike_pack import *
 
 class ToPytorchDataset(Dataset):
     def __init__(self, dataset, transform=None):
