@@ -1,14 +1,10 @@
 from nike_pack import *
 
+
 class LightningModel(LightningModule):
-    def __init__(self, num_classes=2, learning_rate=1e-4, freeze_bn=False):
+    def __init__(self, num_classes=2, learning_rate=1e-4):
         super().__init__()
         self.model = efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT)
-        self.freeze_bn = freeze_bn
-        if self.freeze_bn:
-            for param in self.model.parameters():
-                param.requires_grad = False
-            self.unfreeze_backbone()
 
         self.model.classifier = nn.Sequential(
             nn.Dropout(p=0.3),
@@ -18,10 +14,10 @@ class LightningModel(LightningModule):
         self.loss_fn = nn.CrossEntropyLoss()
         self.learning_rate = learning_rate
 
-        self.accuracy = Accuracy(num_classes=num_classes, average='macro', task="multiclass")
-        self.precision = Precision(num_classes=num_classes, average='macro', task="multiclass")
-        self.recall = Recall(num_classes=num_classes, average='macro', task="multiclass")
-        self.f1 = F1Score(num_classes=num_classes, average='macro', task="multiclass")
+        self.accuracy = Accuracy(num_classes=num_classes, average='macro', task="binary")
+        self.precision = Precision(num_classes=num_classes, average='macro', task="binary")
+        self.recall = Recall(num_classes=num_classes, average='macro', task="binary")
+        self.f1 = F1Score(num_classes=num_classes, average='macro', task="binary")
 
         self.predictions = []
         self.targets = []
@@ -58,12 +54,6 @@ class LightningModel(LightningModule):
         self.log('val_recall', self.recall.compute(), prog_bar=True)
         self.log('val_f1', self.f1.compute(), prog_bar=True)
 
-        if len(self.targets) > 0 and len(self.predictions) > 0:
-            predictions = torch.tensor(self.predictions)
-            targets = torch.tensor(self.targets)
-            t_stat, p_value = ttest_ind(predictions.numpy(), targets.numpy(), equal_var=False)
-            self.log('val_p_value', p_value, prog_bar=True)
-
         self.accuracy.reset()
         self.precision.reset()
         self.recall.reset()
@@ -91,7 +81,3 @@ class LightningModel(LightningModule):
                 'monitor': 'val_accuracy',
             }
         )
-
-    def unfreeze_backbone(self):
-        for param in self.model.parameters():
-            param.requires_grad = True
