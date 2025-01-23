@@ -12,7 +12,7 @@ import numpy as np
 from captum.attr import LayerGradCam
 from torchvision.transforms import v2 as transforms, InterpolationMode
 from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from datasets import load_dataset
 from sklearn.metrics import (
     accuracy_score, roc_curve, classification_report,

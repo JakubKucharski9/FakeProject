@@ -1,4 +1,5 @@
 from nike_pack import *
+from Train import photo_transforms
 
 
 def grad_cam_analysis(model, image, target_layer, target_class):
@@ -54,7 +55,7 @@ def plot_results(original_image, grad_cam_map, model_path, image_path, predictio
 
     ax1 = axes[0]
     ax1.imshow(image_np)
-    ax1.set_title(image_path.lstrip("C:\\Users\\kuba\\PycharmProjects\\NikeProject\\Presentation").rstrip(".jpg"))
+    ax1.set_title("But testowy")
     ax1.axis("off")
 
     ax2 = axes[1]
@@ -109,7 +110,7 @@ if __name__ == "__main__":
     models = [
         "C:\\Users\\kuba\\PycharmProjects\\NikeProject\\Models\\model_9440_highthreshold.pth"
     ]
-    test_dir = "C:\\Users\\kuba\\PycharmProjects\\NikeProject\\Presentation"
+    test_dir = "C:\\Users\\kuba\\PycharmProjects\\NikeProject\\LC"
 
     for root, dirs, files in os.walk(test_dir):
         for image_file in files:

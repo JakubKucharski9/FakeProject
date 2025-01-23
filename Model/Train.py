@@ -94,11 +94,11 @@ def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, cr
              best_accuracy_path, device, model_name, writer):
     torch.cuda.empty_cache()
 
-    for epoch in tqdm(range(num_epochs)):
+    for epoch in tqdm(range(num_epochs), leave=False, dynamic_ncols=True):
         model.train()
         running_loss = 0.0
 
-        for inputs, labels in tqdm(train_dataloader):
+        for inputs, labels in tqdm(train_dataloader, leave=False, dynamic_ncols=True):
             inputs, labels = inputs.to(device), labels.to(device).float()
             optimizer.zero_grad()
             logits = model(inputs)
@@ -144,7 +144,7 @@ def training(model, num_epochs, train_dataloader, test_dataloader, optimizer, cr
         scheduler.step(accuracy)
 
         if (epoch + 1) % 5 == 0 and epoch != 0:
-            torch.save(model.state_dict(), f"Model/outputs/model_{model_name}_epoch{epoch + 1}_{int(accuracy*1000)}.pth")
+            torch.save(model.state_dict(), f"outputs/model_{model_name}_manualprocessed_epoch{epoch + 1}_{int(accuracy*1000)}.pth")
 
         save_best_model(model=model, accuracy=accuracy, best_model_path=best_model_path,
                         best_accuracy_path=best_accuracy_path)
@@ -159,7 +159,7 @@ if __name__ == "__main__":
 
     batch_size = 16
 
-    dataset_train_loader_to_pytorch = ToPytorchDataset(dataset_unprocessed["train"], transform=photo_transforms["train"])
+    dataset_train_loader_to_pytorch = ToPytorchDataset(dataset_manualprocessed["train"], transform=photo_transforms["train"])
     train_dataloader = DataLoader(dataset_train_loader_to_pytorch, batch_size=batch_size, shuffle=True)
 
     dataset_test_loader_to_pytorch = ToPytorchDataset(dataset_unprocessed["test"], transform=photo_transforms["test"])
@@ -172,7 +172,7 @@ if __name__ == "__main__":
 
     ]
 
-    writer = SummaryWriter(log_dir='Model/logs/three_models_tests_100_epochs')
+    writer = SummaryWriter(log_dir='logs/three_models_tests_100_epochs_manualprocessed')
 
     model_names = ["ConvNeXt_Base", "RegNet_Y_8GF","EfficientNet_V2_M"]
 
@@ -210,8 +210,8 @@ if __name__ == "__main__":
 
         criterion = torch.nn.BCEWithLogitsLoss()
 
-        best_model_path = f"Model/outputs/best_model_{model_name}"
-        best_accuracy_path = f"Model/outputs/best_accuracy_{model_name}.txt"
+        best_model_path = f"outputs/best_model_{model_name}"
+        best_accuracy_path = f"outputs/best_accuracy_{model_name}.txt"
 
         num_epochs = 100
 
