@@ -36,7 +36,7 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from ModelLightning.data import ToPytorchDataset
-from ModelLightning.model import LightningModel
+from ModelLightning.LightningModel import LightningModel
 from ModelLightning.data_transforms import photo_transforms
 
 # Definiowanie elementów eksportowanych podczas importu pakietu
