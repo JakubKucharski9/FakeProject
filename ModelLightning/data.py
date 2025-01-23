@@ -20,9 +20,6 @@ class ToPytorchDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        label_one_hot = torch.zeros(2)
-        label_one_hot[label] = 1.0
-
         return image, label
 
     @classmethod

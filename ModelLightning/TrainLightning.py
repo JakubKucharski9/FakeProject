@@ -4,22 +4,22 @@ from nike_pack import *
 if __name__ == "__main__":
     load_dotenv()
     dataset_unprocessed = load_dataset(os.getenv("DATASET_UNPROCESSED"))
-    dataset_autoprocessed = load_dataset(os.getenv("DATASET_AUTOPROCESSED"))
-    dataset_manualprocessed = load_dataset(os.getenv("DATASET_MANUALPROCESSED"))
+    #dataset_autoprocessed = load_dataset(os.getenv("DATASET_AUTOPROCESSED"))
+    #dataset_manualprocessed = load_dataset(os.getenv("DATASET_MANUALPROCESSED"))
 
     batch_size = 16
     num_workers = min(4, cpu_count())
 
     photo_transforms = photo_transforms()
 
-    train_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_manualprocessed["train"],
+    train_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_unprocessed["train"],
                                                            transform=photo_transforms["train"],
                                                            batch_size=batch_size,
                                                            shuffle=True,
                                                            num_workers=num_workers,
                                                            persistent_workers=True)
 
-    val_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_manualprocessed["test"],
+    val_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_unprocessed["test"],
                                                          transform=photo_transforms["test"],
                                                          batch_size=batch_size,
                                                          shuffle=False,
@@ -33,12 +33,14 @@ if __name__ == "__main__":
                                                           num_workers=num_workers,
                                                           persistent_workers=True)
 
-    num_classes = 2
+    num_classes = 1
     learning_rate = 1e-4
-    logger = TensorBoardLogger("logs/")
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    weight_decay = 1e-4
 
-    model = LightningModel(num_classes=num_classes, learning_rate=learning_rate)
+    model = LightningModel(num_classes=num_classes, learning_rate=learning_rate, weight_decay = weight_decay)
+
+    logger = TensorBoardLogger("logs/tests/")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     checkpoints = ModelCheckpoint(
         monitor="val_loss",
@@ -54,7 +56,7 @@ if __name__ == "__main__":
         accelerator=device,
         devices=1,
         logger=logger,
-        log_every_n_steps=5,
+        log_every_n_steps=0,
         accumulate_grad_batches=1
     )
 
