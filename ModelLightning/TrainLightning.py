@@ -4,8 +4,8 @@ from nike_pack import *
 if __name__ == "__main__":
     load_dotenv()
     dataset_unprocessed = load_dataset(os.getenv("DATASET_UNPROCESSED"))
-    #dataset_autoprocessed = load_dataset(os.getenv("DATASET_AUTOPROCESSED"))
-    #dataset_manualprocessed = load_dataset(os.getenv("DATASET_MANUALPROCESSED"))
+    dataset_autoprocessed = load_dataset(os.getenv("DATASET_AUTOPROCESSED"))
+    dataset_manualprocessed = load_dataset(os.getenv("DATASET_MANUALPROCESSED"))
 
     batch_size = 16
     num_workers = min(4, cpu_count())
@@ -34,8 +34,8 @@ if __name__ == "__main__":
                                                           persistent_workers=True)
 
     num_classes = 1
-    learning_rate = 1e-4
-    weight_decay = 1e-4
+    learning_rate = 1e-5
+    weight_decay = 1e-5
 
     model = LightningModel(num_classes=num_classes, learning_rate=learning_rate, weight_decay = weight_decay)
 
