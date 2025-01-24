@@ -9,10 +9,8 @@ class ToPytorchDataset(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, idx):
-        item = self.dataset[idx]
-
-        image = item["image"]
-        label = item["label"]
+        image = self.dataset[idx]["image"]
+        label = self.dataset[idx]["label"]
 
         if image.mode == "RGBA":
             image = image.convert("RGB")
