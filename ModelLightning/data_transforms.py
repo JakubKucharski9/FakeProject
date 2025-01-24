@@ -6,19 +6,11 @@ def photo_transforms():
         "train": transforms.Compose([
             transforms.ToImage(),
 
-            transforms.Resize(800, interpolation=InterpolationMode.BICUBIC),
+            transforms.Resize(600, interpolation=InterpolationMode.BICUBIC),
 
             transforms.RandomResizedCrop(480, scale=(0.8, 1.0)),
 
-            transforms.RandomHorizontalFlip(p=0.5),
-
-            transforms.RandomRotation(degrees=15),
-
-            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-
-            transforms.RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3)),
-
-            transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 2.0)),
+            transforms.AutoAugment(transforms.AutoAugmentPolicy.IMAGENET),
 
             transforms.ToDtype(torch.float32, scale=True),
 
