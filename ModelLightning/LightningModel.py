@@ -22,7 +22,7 @@ class LightningModel(LightningModule):
         self.f1 = F1Score(task="binary")
 
     def forward(self, x):
-        return self.model(x).squeeze(1)
+        return self.model(x).squeeze(dim=1)
 
     def training_step(self, train_batch, batch_idx):
         x, y = train_batch
@@ -80,6 +80,6 @@ class LightningModel(LightningModule):
             {
                 'optimizer': optimizer,
                 'lr_scheduler': lr_scheduler,
-                'monitor': 'val_precision'
+                'monitor': 'val_f1'
             }
         )
