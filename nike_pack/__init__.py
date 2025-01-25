@@ -34,8 +34,6 @@ from torchvision.models import (
 )
 from torchvision.transforms import v2 as transforms, InterpolationMode
 from tqdm import tqdm
-
-from Model.Testing import EnsembleModel
 from ModelLightning.LightningModel import LightningModel
 from ModelLightning.data import ToPytorchDataset
 from ModelLightning.data_transforms import photo_transforms
@@ -47,7 +45,7 @@ __all__ = [
     'InterpolationMode', 'DataLoader', 'Dataset', 'tqdm', 'load_dataset',
     'accuracy_score', 'roc_curve', 'classification_report', 'f1_score',
     'precision_score', 'recall_score', 'load_dotenv', 'os', 'Path', 'hashlib',
-    'shutil', 'datetime', 'EnsembleModel', 'IntegratedGradients', 'SummaryWriter',
+    'shutil', 'datetime', 'IntegratedGradients', 'SummaryWriter',
     'nn', 'LightningModule', 'ttest_ind', 'Accuracy', 'Precision', 'Recall', 'F1Score',
     'cpu_count', 'Trainer', 'TensorBoardLogger', 'ModelCheckpoint',
     'ToPytorchDataset', 'LightningModel', 'photo_transforms'
