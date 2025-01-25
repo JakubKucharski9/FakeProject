@@ -1,9 +1,9 @@
 from nike_pack import *
-from captum.attr import LayerGradCam
+
 
 def to_gray_image(x):
     x = x - x.min()
-    x = x / (x.max() + 1e-8)  # Zabezpieczenie przed dzieleniem przez zero
+    x = x / x.max()
     x *= 255
     return np.array(x, dtype=np.uint8)
 
