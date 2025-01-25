@@ -34,12 +34,21 @@ if __name__ == "__main__":
                                                           persistent_workers=True)
 
     num_classes = 1
-    learning_rate = 1e-5
-    weight_decay = 1e-5
+    learning_rate = 1e-3
+    weight_decay = 1e-4
+    model_to_use = "regnet" # efficientnet/ regnet/ convnext
 
-    model = LightningModel(num_classes=num_classes, learning_rate=learning_rate, weight_decay = weight_decay)
+    model = LightningModel(num_classes=num_classes,
+                           learning_rate=learning_rate,
+                           weight_decay=weight_decay,
+                           threshold=0.5,
+                           scheduler_factor=0.5,
+                           scheduler_patience=5,
+                           model_to_use=model_to_use)
 
-    logger = TensorBoardLogger("logs/tests/")
+
+
+    logger = TensorBoardLogger(f"logs/tests_{model_to_use}")
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     checkpoints = ModelCheckpoint(
