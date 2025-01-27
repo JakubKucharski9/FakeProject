@@ -12,7 +12,7 @@ If you are more interested in the topic, checkout my article!
 **https://medium.com/@kuba_57640/how-artificial-intelligence-changes-game-in-fakes-detection-1360f82ace5c**
 
 ### Current results on the test set:
-- Accuracy: 97,69%
-- Precision: 100%
-- Recall: 95,38%
-- F1 Score: 97,64%
+- Accuracy: 97,7%
+- Precision: 95,6%
+- Recall: 100%
+- F1 Score: 97,7%
