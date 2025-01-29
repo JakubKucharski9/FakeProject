@@ -1,13 +1,15 @@
 from torchmetrics import ConfusionMatrix
 import seaborn as sns
+from torchvision.models import efficientnet_b4, EfficientNet_B4_Weights, efficientnet_b5, EfficientNet_B5_Weights
+
 from nike_pack import *
 
 
 class LightningModel(LightningModule):
-    def __init__(self, num_classes, learning_rate, weight_decay, threshold=0.5, dropout=0.5, scheduler_factor=0.1, scheduler_patience=5, model_to_use="efficientnet"):
+    def __init__(self, num_classes, learning_rate, weight_decay, threshold=0.5, dropout=0.5, scheduler_factor=0.1, scheduler_patience=5, model_to_use="efficientnetv2"):
         super().__init__()
         self.save_hyperparameters()
-        if model_to_use == 'efficientnet':
+        if model_to_use == 'efficientnetv2':
             self.model = efficientnet_v2_m(weights=EfficientNet_V2_M_Weights.DEFAULT)
             self.model.classifier = nn.Sequential(
                 nn.Dropout(p=dropout),
@@ -15,16 +17,21 @@ class LightningModel(LightningModule):
             )
         elif model_to_use == 'regnet':
             self.model = regnet_y_8gf(weights=RegNet_Y_8GF_Weights.DEFAULT)
-            self.model.fc = torch.nn.Sequential(
-                torch.nn.Dropout(p=dropout),
-                torch.nn.Linear(self.model.fc.in_features, num_classes)
+            self.model.fc = nn.Sequential(
+                nn.Dropout(p=dropout),
+                nn.Linear(self.model.fc.in_features, num_classes)
             )
-        elif model_to_use == 'convnext':
-            self.model.classifier = torch.nn.Sequential(
-                torch.nn.Flatten(start_dim=1),
-                torch.nn.LayerNorm(1024),
-                torch.nn.Dropout(p=0.3),
-                torch.nn.Linear(1024, 1)
+        elif model_to_use == 'efficientnetb4':
+            self.model = efficientnet_b4(weights=EfficientNet_B4_Weights.DEFAULT)
+            self.model.classifier = nn.Sequential(
+                nn.Dropout(p=dropout),
+                nn.Linear(self.model.classifier[1].in_features, num_classes)
+            )
+        elif model_to_use == 'efficientnetb5':
+            self.model = efficientnet_b5(weights=EfficientNet_B5_Weights.DEFAULT)
+            self.model.classifier = nn.Sequential(
+                nn.Dropout(p=dropout),
+                nn.Linear(self.model.classifier[1].in_features, num_classes)
             )
 
         self.loss_fn = nn.BCEWithLogitsLoss()
@@ -38,7 +45,6 @@ class LightningModel(LightningModule):
         self.precision = Precision(task="binary")
         self.recall = Recall(task="binary")
         self.f1 = F1Score(task="binary")
-
         self.confusion_matrix = ConfusionMatrix(task="binary", num_classes=2)
 
     def forward(self, x):
@@ -110,7 +116,7 @@ class LightningModel(LightningModule):
             {
                 'optimizer': optimizer,
                 'lr_scheduler': lr_scheduler,
-                'monitor': 'val_f1'
+                'monitor': 'val_recall'
             }
         )
 
@@ -120,5 +126,5 @@ class LightningModel(LightningModule):
                     yticklabels=['Authentic', 'Fake'])
         plt.xlabel('Predicted')
         plt.ylabel('Actual')
-        plt.title('Confusion Matrix')
+        plt.title(f"Epoch: {str(self.current_epoch+1)}")
         plt.show()
