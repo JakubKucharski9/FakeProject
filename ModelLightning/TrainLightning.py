@@ -6,27 +6,28 @@ if __name__ == "__main__":
     dataset_unprocessed = load_dataset(os.getenv("DATASET_UNPROCESSED"))
     dataset_autoprocessed = load_dataset(os.getenv("DATASET_AUTOPROCESSED"))
     dataset_manualprocessed = load_dataset(os.getenv("DATASET_MANUALPROCESSED"))
+    dataset_clean = load_dataset("Kucharek9/AF1collection")
 
     batch_size = 16
     num_workers = min(4, cpu_count())
 
     photo_transforms = photo_transforms()
 
-    train_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_unprocessed["train"],
+    train_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_clean["train"],
                                                            transform=photo_transforms["train"],
                                                            batch_size=batch_size,
                                                            shuffle=True,
                                                            num_workers=num_workers,
                                                            persistent_workers=True)
 
-    val_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_unprocessed["test"],
+    val_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_clean["validation"],
                                                          transform=photo_transforms["test"],
                                                          batch_size=batch_size,
                                                          shuffle=False,
                                                          num_workers=num_workers,
                                                          persistent_workers=True)
 
-    test_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_unprocessed["test"],
+    test_dataloader = ToPytorchDataset.dataloader_from_hf(dataset=dataset_clean["test"],
                                                           transform=photo_transforms["test"],
                                                           batch_size=batch_size,
                                                           shuffle=False,
@@ -36,7 +37,7 @@ if __name__ == "__main__":
     num_classes = 1
     learning_rate = 1e-3
     weight_decay = 1e-4
-    model_to_use = "regnet" # efficientnet/ regnet/ convnext
+    model_to_use = "efficientnetv2" # efficientnetv2/ regnet/ efficientnetb4/ efficientnetb7
 
     model = LightningModel(num_classes=num_classes,
                            learning_rate=learning_rate,
@@ -46,14 +47,12 @@ if __name__ == "__main__":
                            scheduler_patience=5,
                            model_to_use=model_to_use)
 
-
-
     logger = TensorBoardLogger(f"logs/tests_{model_to_use}")
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     checkpoints = ModelCheckpoint(
-        monitor="val_loss",
-        mode="min",
+        monitor="val_accuracy",
+        mode="max",
         save_top_k=3,
         dirpath="checkpoints/",
         filename="model_{epoch}_{val_accuracy:.4f}",
@@ -61,7 +60,7 @@ if __name__ == "__main__":
 
     trainer = Trainer(
         callbacks=[checkpoints],
-        max_epochs=50,
+        max_epochs=100,
         accelerator=device,
         devices=1,
         logger=logger,
