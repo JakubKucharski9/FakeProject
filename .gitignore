@@ -8,6 +8,8 @@
 /Test_photos/
 /Model/outputs/
 *__pycache__*
+/.vscode/
+/ModelLightning/logs*
 
 # Ignore files
 *~

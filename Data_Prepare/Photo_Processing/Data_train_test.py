@@ -1,3 +1,5 @@
+from sklearn.model_selection import train_test_split
+
 from nike_pack import *
 
 # Ścieżki katalogów
@@ -18,15 +20,6 @@ os.makedirs(train_dir, exist_ok=True)
 os.makedirs(test_dir, exist_ok=True)
 
 def copy_files_to_train_test_balanced(data_dir, include_dirs, test_size, random_state):
-    """
-    Splits files from specified directories into balanced training and testing sets and copies them to respective output directories.
-
-    Parameters:
-    - data_dir (str): Path to the main directory containing subdirectories with files to be processed.
-    - include_dirs (list of str): List of subdirectory names within data_dir to include in the split.
-    - test_size (float): Proportion of files to include in the test split.
-    - random_state (int): Seed used by the random number generator for reproducibility.
-    """
     # Lista przechowująca pliki dla każdej klasy
     class_files = {}
 

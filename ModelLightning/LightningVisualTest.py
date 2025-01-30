@@ -1,8 +1,7 @@
 from nike_pack import *
-from Train import photo_transforms
 
 
-def grad_cam_analysis(model, image, target_layer, target_class):
+def grad_cam_analysis(model, image, target_layer):
     model.eval()
 
     def forward_hook(module, input, output):
@@ -16,7 +15,7 @@ def grad_cam_analysis(model, image, target_layer, target_class):
 
     output = model(image)
     model.zero_grad()
-    class_score = output[0, target_class]
+    class_score = output[0]
     class_score.backward()
 
     gradients = model.gradients.cpu().detach()
@@ -55,7 +54,7 @@ def plot_results(original_image, grad_cam_map, model_path, image_path, predictio
 
     ax1 = axes[0]
     ax1.imshow(image_np)
-    ax1.set_title("But testowy")
+    ax1.set_title(image_path.lstrip("..\\Test_photos").rstrip(".jpg"))
     ax1.axis("off")
 
     ax2 = axes[1]
@@ -78,7 +77,7 @@ def plot_results(original_image, grad_cam_map, model_path, image_path, predictio
     cax = divider.append_axes("right", size="5%", pad=0.1)
     plt.colorbar(im, cax=cax, label="Grad-CAM Heatmap")
 
-    fig.suptitle("Explainable AI Results", fontsize=16)
+    fig.suptitle(model_path.lstrip("checkpoints\\"), fontsize=16)
     plt.tight_layout(rect=(0.0, 0.0, 1.0, 0.95))
     plt.show()
 
@@ -107,24 +106,27 @@ if __name__ == "__main__":
     model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, 1)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    models = [
-        "C:\\Users\\kuba\\PycharmProjects\\NikeProject\\Models\\model_9440_highthreshold.pth"
+    checkpoints = [
+        "checkpoints\\model_epoch=30_val_accuracy=0.9906.ckpt",
+        "checkpoints\\model_epoch=30_val_accuracy=0.9904.ckpt"
     ]
-    test_dir = "C:\\Users\\kuba\\PycharmProjects\\NikeProject\\LC"
 
+    test_dir = "..\\Test_photos"
+    photo_transforms = photo_transforms()
     for root, dirs, files in os.walk(test_dir):
         for image_file in files:
             image_path = os.path.join(root, image_file)
             image = Image.open(image_path).convert("RGB")
             transform = photo_transforms["test"]
             image_tensor = transform(image).unsqueeze(0).to(device)
-            for model_path in models:
-                model.load_state_dict(torch.load(model_path, weights_only=True, map_location=device))
+            for checkpoint_path in checkpoints:
+                model = LightningModel.load_from_checkpoint(checkpoint_path, num_classes=1, learning_rate=1e-4, weight_decay=1e-4)
                 model.to(device)
+                model.eval()
 
-                target_layer = model.features[-1]
+                target_layer = model.model.features[-1]
 
-                grad_cam_map = grad_cam_analysis(model, image_tensor, target_layer, target_class=0)
+                grad_cam_map = grad_cam_analysis(model, image_tensor, target_layer)
                 prediction, probability = predict_photo(model, image_path, device, transform, threshold=.5)
 
-                plot_results(image_tensor, grad_cam_map, model_path, image_path, prediction=prediction, probability=probability)
+                plot_results(image_tensor, grad_cam_map, checkpoint_path, image_path, prediction=prediction, probability=probability)
