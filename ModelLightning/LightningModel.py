@@ -71,10 +71,6 @@ class LightningModel(LightningModule):
         self.f1.update(predictions, y)
         self.confusion_matrix.update(predictions, y)
 
-        self.log('val_accuracy', self.accuracy(predictions, y), on_epoch=True, on_step=False)
-        self.log('val_precision', self.precision(predictions, y), on_epoch=True, on_step=False)
-        self.log('val_recall', self.recall(predictions, y), on_epoch=True, on_step=False)
-        self.log('val_f1', self.f1(predictions, y), on_epoch=True, on_step=False)
         self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         return loss
 
@@ -107,7 +103,7 @@ class LightningModel(LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                                   mode='max',
                                                                   factor=self.scheduler_factor,
@@ -115,8 +111,12 @@ class LightningModel(LightningModule):
         return (
             {
                 'optimizer': optimizer,
-                'lr_scheduler': lr_scheduler,
-                'monitor': 'val_recall'
+                'lr_scheduler': {
+                    'scheduler': lr_scheduler,
+                    'monitor': 'val_f1',
+                    'interval': 'epoch',
+                    'frequency': 1
+                }
             }
         )
 
@@ -127,4 +127,5 @@ class LightningModel(LightningModule):
         plt.xlabel('Predicted')
         plt.ylabel('Actual')
         plt.title(f"Epoch: {str(self.current_epoch+1)}")
+        plt.tight_layout()
         plt.show()
