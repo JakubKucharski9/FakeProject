@@ -1,4 +1,9 @@
-from nike_pack import *
+from pathlib import Path
+import shutil
+from PIL import Image
+import datetime
+import hashlib
+
 
 paths_and_prefixes = [
     (Path("../Drive/data/af1"), "airforce1_"),

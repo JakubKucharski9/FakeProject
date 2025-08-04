@@ -1,4 +1,4 @@
-from nike_pack import *
+from torch.utils.data import DataLoader, Dataset
 
 class ToPytorchDataset(Dataset):
     def __init__(self, dataset, transform=None):

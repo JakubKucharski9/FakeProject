@@ -1,4 +1,7 @@
-from nike_pack import *
+import io
+from rembg import remove
+import os
+from PIL import Image
 
 
 def process_images_with_background(input_dir, output_dir):
