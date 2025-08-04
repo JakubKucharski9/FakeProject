@@ -1,8 +1,15 @@
 from torchmetrics import ConfusionMatrix
 import seaborn as sns
 from torchvision.models import efficientnet_b4, EfficientNet_B4_Weights, efficientnet_b5, EfficientNet_B5_Weights
-
-from nike_pack import *
+from pytorch_lightning import LightningModule
+from torchvision.models import (
+    efficientnet_v2_m, EfficientNet_V2_M_Weights,
+    regnet_y_8gf, RegNet_Y_8GF_Weights
+)
+import torch.nn as nn
+from torchmetrics.classification import Accuracy, Precision, Recall, F1Score
+import torch
+import matplotlib.pyplot as plt
 
 
 class LightningModel(LightningModule):

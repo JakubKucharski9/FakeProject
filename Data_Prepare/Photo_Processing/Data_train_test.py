@@ -1,6 +1,8 @@
+import os
+import shutil
+
 from sklearn.model_selection import train_test_split
 
-from nike_pack import *
 
 # Ścieżki katalogów
 data_dir = "C:\\Users\\kuba\\Desktop\\test2\\procesed"

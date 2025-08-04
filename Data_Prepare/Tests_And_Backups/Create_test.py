@@ -1,4 +1,5 @@
-from __init__ import *
+from pathlib import Path
+import shutil
 
 
 Drive_data_dir = Path("../Drive/data")

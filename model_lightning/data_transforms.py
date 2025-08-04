@@ -1,4 +1,5 @@
-from nike_pack import *
+import torch
+from torchvision.transforms import v2 as transforms, InterpolationMode
 
 
 def photo_transforms():

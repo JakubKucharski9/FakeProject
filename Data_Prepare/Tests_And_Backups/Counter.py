@@ -1,4 +1,4 @@
-from __init__ import *
+import os
 
 
 def count_files_in_directory(directory):

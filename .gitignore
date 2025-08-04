@@ -9,12 +9,12 @@
 /Model/outputs/
 *__pycache__*
 /.vscode/
-/ModelLightning/logs*
+/model_lightning/logs*
 
 # Ignore files
 *~
-setup.bat
 *.pth
+setup.bat
 *.ckpt
 best_accuracy.txt
 Scratch*
